@@ -19,6 +19,45 @@ RSpec.describe Noticed::Openwa::Client do
     end
   end
 
+  describe "#session_status" do
+    context "when the session is ready", vcr: { cassette_name: "session_status/ready" } do
+      it "returns its state, without a reason or a restriction", :aggregate_failures do
+        status = client.session_status
+
+        expect(status).to include(state: "ready", reason: nil, restriction: nil)
+        expect(status[:raw]).to include("id" => ENV.fetch("OPENWA_SESSION_ID"), "status" => "ready")
+      end
+    end
+
+    # Recorded after logging the session out, before pairing it again.
+    context "when the session is logged out", vcr: { cassette_name: "session_status/logged_out" } do
+      it "returns a state other than ready" do
+        expect(client.session_status[:state]).to be_a(String).and(satisfy { |state| state != "ready" })
+      end
+    end
+
+    context "when WhatsApp restricted the session's account",
+            vcr: { cassette_name: "templates/session_status", record: :none,
+                   erb: { body: JSON.generate(id: "openwa-session-placeholder", name: "noticed-openwa-test", status: "ready",
+                                              lastError: nil, engineLoaded: true,
+                                              restriction: { kind: "reachout_timelock", code: "463",
+                                                             expiresAt: "2026-11-18T00:00:00.000Z" }) } } do
+      it "returns the restriction beside its state" do
+        expect(client.session_status).to include(state: "ready", reason: nil,
+                                                 restriction: { kind: "reachout_timelock", code: "463",
+                                                                expires_at: Time.utc(2026, 11, 18) })
+      end
+    end
+
+    context "when the session doesn't exist", vcr: { cassette_name: "session_status/unknown_session" } do
+      subject(:client) { OpenwaSpecSupport.client(session_id: "noticed-openwa-missing-session") }
+
+      it "raises a request error" do
+        expect { client.session_status }.to raise_error(Noticed::Openwa::RequestError, /session_status: 404/)
+      end
+    end
+  end
+
   describe "#check_number" do
     context "when the number is on WhatsApp", vcr: { cassette_name: "check_number/found" } do
       it "returns the chat id WhatsApp holds for it", :aggregate_failures do

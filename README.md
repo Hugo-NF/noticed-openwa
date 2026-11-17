@@ -4,8 +4,9 @@ WhatsApp delivery for [noticed](https://github.com/excid3/noticed) through [Open
 a self-hosted WhatsApp gateway. Written against OpenWA 0.30.0.
 
 It implements only what a delivery needs: sending a text, an image or a document to a number, checking a number is on
-WhatsApp, registering (or unregistering) the session's webhook, and verifying and parsing its deliveries. Sessions,
-groups, contacts and the rest of OpenWA's webhook administration are left to OpenWA itself.
+WhatsApp, reading the session's status, registering (or unregistering) the session's webhook, and verifying and
+parsing its deliveries. Managing sessions, groups, contacts and the rest of OpenWA's webhook administration are left
+to OpenWA itself.
 
 ## Installation
 
@@ -63,6 +64,24 @@ Noticed::Openwa::Client.chat_id("+55 61 99110-1515") # => "5561991101515@c.us"
 
 The chat id WhatsApp holds can differ from a number's digits (Brazilian mobiles may be held without their ninth digit):
 send to the `whatsapp_id` the check returns.
+
+### The session's status
+
+```ruby
+client.session_status
+# => { state: "ready", reason: nil, restriction: nil, raw: { "id" => "...", "status" => "ready", ... } }
+```
+
+- `state` is OpenWA's status, the same values as the `session.status` webhook events: `"created"`, `"initializing"`,
+  `"qr_ready"`, `"authenticating"`, `"ready"`, `"disconnected"`, `"action_required"` or `"failed"`. After a logout it
+  passes `"disconnected"` and settles on `"qr_ready"`, waiting to be paired again.
+- `reason` is OpenWA's `lastError`, while the session is `failed`, `action_required` or reconnecting.
+- `restriction` is the restriction WhatsApp placed on the account (`{ kind:, code:, expires_at: }`), nil without one.
+  A restricted session can still be `ready`.
+- `raw` is OpenWA's answer. It holds the account's phone and name too, so keep it out of logs.
+
+A webhook delivery can be lost (OpenWA down, or unable to reach the app): poll it, for example from a scheduled job,
+to notice a logged-out session. An unknown session raises `RequestError`.
 
 ### The session's webhook
 
@@ -198,15 +217,17 @@ OPENWA_RECORD=true VCR_RECORD_MODE=all bundle exec rspec spec/noticed/openwa/cli
 | `OPENWA_TEST_NUMBER` | Your own number: it receives the test messages |
 | `OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP` | A number with no WhatsApp account |
 | `OPENWA_TEST_WEBHOOK_URL` | A public URL you control: the webhook specs register it |
+| `OPENWA_SESSION_PHONE`, `OPENWA_SESSION_PUSH_NAME` | The session account's own number and WhatsApp name, kept out of the cassettes |
 | `OPENWA_WEBHOOK_SECRET` | Optional: the webhook specs' secret (16 characters or more) |
 
-A value is the rest of its line (no inline comments), and an empty one is the same as leaving it out.
+A value is the rest of its line (no inline comments; quotes around it are dropped), and an empty one is the same
+as leaving it out.
 
-The URL (scheme, host and port), the key, the session, the webhook's URL and secret and both numbers (with and
-without the ninth digit) are replaced by placeholders in the cassettes, the `Host` header isn't kept, and replayed with
-the placeholders of `spec/spec_helper.rb`. The "not on WhatsApp" spec checks the number first and stops before sending
-if it is on WhatsApp: a real account would receive the message. Check a new cassette for those values before
-committing it.
+The URL (scheme, host and port), the key, the session, the webhook's URL and secret, the session account's number
+and name, and both numbers (with and without the ninth digit) are replaced by placeholders in the cassettes, the
+`Host` header isn't kept, and replayed with the placeholders of `spec/spec_helper.rb`. The "not on WhatsApp" spec
+checks the number first and stops before sending if it is on WhatsApp: a real account would receive the message.
+Check a new cassette for those values before committing it.
 
 The webhook specs register `OPENWA_TEST_WEBHOOK_URL` on the session (OpenWA refuses a URL that doesn't resolve to a
 public address): the session's events are delivered there while it exists. Each spec unregisters it before it ends,

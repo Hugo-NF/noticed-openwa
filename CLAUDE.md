@@ -18,10 +18,11 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 ## Scope
 
 - Only what a delivery needs: sending a text, an image and a document to a chat, checking a number is on WhatsApp,
-  registering, listing and unregistering the session's own webhook (by its URL), verifying and parsing its deliveries
-  into events (no state: the app keeps routes, jobs and persistence), and their errors. No sessions, groups,
-  chats, contacts, the rest of OpenWA's webhook administration (deleting others' webhooks, testing, delivery failures,
-  redrives) or anything else of OpenWA's API.
+  reading the session's status, registering, listing and unregistering the session's own webhook (by its URL),
+  verifying and parsing its deliveries into events (no state: the app keeps routes, jobs and persistence), and their
+  errors. No session administration (starting, stopping, pairing), groups, chats, contacts, the rest of OpenWA's
+  webhook administration (deleting others' webhooks, testing, delivery failures, redrives) or anything else of
+  OpenWA's API.
 - No reference to an app: no models, `Rails.application`, routes or templates. The app passes values or lambdas as the
   delivery method's options.
 - Runtime dependencies: noticed and Ruby's standard library (`net/http`, `json`, `base64`, `openssl`). noticed is a
@@ -70,10 +71,10 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   value to keep out of cassettes).
 - Never send to a number that isn't the maintainer's: `OPENWA_TEST_NUMBER` is theirs. A spec about a number not on
   WhatsApp checks it first and stops before sending if it is (a real account would receive the message).
-- `spec/spec_helper.rb` replaces the URL (scheme, host and port), the key, the session, the webhook's URL and secret
-  and both numbers (with and without the ninth digit) with placeholders, valid in a URI and none a prefix of another,
-  drops the `Host` header, and replays them with its defaults. It reads `.env.test.local` only with
-  `OPENWA_RECORD=true`. Check a new cassette for real values before committing it.
+- `spec/spec_helper.rb` replaces the URL (scheme, host and port), the key, the session, the webhook's URL and secret,
+  the session account's number and name, and both numbers (with and without the ninth digit) with placeholders, valid
+  in a URI and none a prefix of another, drops the `Host` header, and replays them with its defaults. It reads
+  `.env.test.local` only with `OPENWA_RECORD=true`. Check a new cassette for real values before committing it.
 - Record against the local OpenWA (`docker-compose.yml`, `http://localhost:2785`, the README's "A local OpenWA"): VCR
   records `localhost`; only `127.0.0.1` passes through.
 - For answers a real session can't give (`409`, `429`, `503`), use the ERB template of a real cassette

@@ -4,13 +4,14 @@ require "base64"
 require "json"
 require "net/http"
 require "openssl"
+require "time"
 require "uri"
 
 module Noticed
   module Openwa
     # The parts of OpenWA's REST API a delivery needs: sending a text, an image or a document to a chat, checking a
-    # number is on WhatsApp, and registering (or unregistering) the session's webhook. Every call authenticates with the `X-API-Key`
-    # header, in the given session.
+    # number is on WhatsApp, reading the session's status, and registering (or unregistering) the session's webhook.
+    # Every call authenticates with the `X-API-Key` header, in the given session.
     class Client
       CHAT_SUFFIX = "@c.us"
       IDEMPOTENCY_KEY = /\A[\x21-\x7e]{1,255}\z/
@@ -40,6 +41,18 @@ module Noticed
       def self.chat_id(number)
         number = number.to_s
         number.include?("@") ? number : "#{number.delete('^0-9')}#{CHAT_SUFFIX}"
+      end
+
+      # { state:, reason:, restriction:, raw: }: the session's status as OpenWA holds it (`ready`, `disconnected`,
+      # `qr_ready`, ...: the states of `session.status` webhook events), why when it isn't working (OpenWA's
+      # `lastError`), the restriction WhatsApp placed on its account ({ kind:, code:, expires_at: }, nil without one),
+      # and OpenWA's answer. A restricted session can still be `ready`. An unknown session raises RequestError.
+      def session_status
+        body = request(Net::HTTP::Get, nil, operation: "session_status")
+        restriction = body["restriction"]
+        restriction &&= { kind: restriction["kind"], code: restriction["code"],
+                          expires_at: restriction["expiresAt"] && Time.iso8601(restriction["expiresAt"]) }
+        { state: body["status"], reason: body["lastError"], restriction:, raw: body }
       end
 
       # { exists:, whatsapp_id: }: whether WhatsApp has an account for the number, and the chat id it holds for it (it
@@ -144,7 +157,7 @@ module Noticed
 
       # secrets: values kept out of the error's message, should OpenWA's reason quote them.
       def request(method, path, operation:, body: nil, headers: {}, secrets: [])
-        uri = URI("#{url}/api/sessions/#{URI.encode_www_form_component(session_id)}/#{path}")
+        uri = URI([ "#{url}/api/sessions/#{URI.encode_www_form_component(session_id)}", path ].compact.join("/"))
         request = method.new(uri, headers.merge("X-API-Key" => @api_key, "Accept" => "application/json"))
         if body
           request["Content-Type"] = "application/json"
