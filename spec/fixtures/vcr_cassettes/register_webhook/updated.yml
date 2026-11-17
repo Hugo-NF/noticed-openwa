@@ -1,0 +1,617 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Request-Id:
+      - 8123b0e0-2cdd-493f-9e4c-46677856f3a1
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-kGJPJ5FflwC6eHVnqM_aOm8p'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '5'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '95'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '980'
+      X-Ratelimit-Reset-Long:
+      - '2764'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '2'
+      Etag:
+      - W/"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: "[]"
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+- request:
+    method: post
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks
+    body:
+      encoding: UTF-8
+      string: '{"url":"https://openwa-webhook-url.placeholder","events":["session.status"],"secret":"openwa-webhook-secret-placeholder"}'
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      X-Request-Id:
+      - 8e953184-ddcd-41a6-9382-c668cc554b87
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-LyQhu2ESssVJzyNI_fCLMjEw'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '9'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '99'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '991'
+      X-Ratelimit-Reset-Long:
+      - '2764'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '335'
+      Etag:
+      - W/"14f-fta7QgdJOykrcPFarfS/adcvw3w"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '{"id":"41ac8df5-7f61-4f35-bbe0-43af956350ad","sessionId":"openwa-session-placeholder","url":"https://openwa-webhook-url.placeholder","events":["session.status"],"filters":null,"active":true,"retryCount":3,"lastTriggeredAt":null,"createdAt":"2026-11-17T20:33:46.068Z","updatedAt":"2026-11-17T20:33:46.068Z"}'
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+- request:
+    method: get
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Request-Id:
+      - cc6321f3-1361-4fe4-9d8b-aeeeaf1ad5a2
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-E8Wy9MQv-BijhrRlkeQMfTxl'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '4'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '94'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '979'
+      X-Ratelimit-Reset-Long:
+      - '2764'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '337'
+      Etag:
+      - W/"151-NjdpQi7uVYloqNj0i2GdjSD6DXs"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '[{"id":"41ac8df5-7f61-4f35-bbe0-43af956350ad","sessionId":"openwa-session-placeholder","url":"https://openwa-webhook-url.placeholder","events":["session.status"],"filters":null,"active":true,"retryCount":3,"lastTriggeredAt":null,"createdAt":"2026-11-17T20:33:46.068Z","updatedAt":"2026-11-17T20:33:46.068Z"}]'
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+- request:
+    method: put
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks/41ac8df5-7f61-4f35-bbe0-43af956350ad
+    body:
+      encoding: UTF-8
+      string: '{"url":"https://openwa-webhook-url.placeholder","events":["message.ack","message.failed"],"secret":"openwa-webhook-secret-placeholder","retryCount":3,"active":true}'
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Request-Id:
+      - 04b313c2-ff72-4301-9707-b3618448545a
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-2MP15xNLT-y1DnPySyyAXhdt'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '8'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '98'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '996'
+      X-Ratelimit-Reset-Long:
+      - '3087'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '349'
+      Etag:
+      - W/"15d-xC7+LTULUkOdH0Kw2umbpVgtWQ0"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '{"id":"41ac8df5-7f61-4f35-bbe0-43af956350ad","sessionId":"openwa-session-placeholder","url":"https://openwa-webhook-url.placeholder","events":["message.ack","message.failed"],"filters":null,"active":true,"retryCount":3,"lastTriggeredAt":null,"createdAt":"2026-11-17T20:33:46.068Z","updatedAt":"2026-11-17T20:33:46.077Z"}'
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+- request:
+    method: get
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Request-Id:
+      - 9305c2a6-9149-424d-9cd1-c70d7e3b9fbe
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-TtlZUZkBfv2Fi1bLbMx6poiQ'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '3'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '93'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '978'
+      X-Ratelimit-Reset-Long:
+      - '2764'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '351'
+      Etag:
+      - W/"15f-NI+Qzx0X9GeuPt+kbdx2/tszJ64"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '[{"id":"41ac8df5-7f61-4f35-bbe0-43af956350ad","sessionId":"openwa-session-placeholder","url":"https://openwa-webhook-url.placeholder","events":["message.ack","message.failed"],"filters":null,"active":true,"retryCount":3,"lastTriggeredAt":null,"createdAt":"2026-11-17T20:33:46.068Z","updatedAt":"2026-11-17T20:33:46.077Z"}]'
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+- request:
+    method: get
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Request-Id:
+      - eb9754ad-97af-48bc-8281-5eeedea2c176
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-GVtJx8KIXdoflh5Ayf-NESMR'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '2'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '92'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '977'
+      X-Ratelimit-Reset-Long:
+      - '2764'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '351'
+      Etag:
+      - W/"15f-NI+Qzx0X9GeuPt+kbdx2/tszJ64"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '[{"id":"41ac8df5-7f61-4f35-bbe0-43af956350ad","sessionId":"openwa-session-placeholder","url":"https://openwa-webhook-url.placeholder","events":["message.ack","message.failed"],"filters":null,"active":true,"retryCount":3,"lastTriggeredAt":null,"createdAt":"2026-11-17T20:33:46.068Z","updatedAt":"2026-11-17T20:33:46.077Z"}]'
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+- request:
+    method: delete
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks/41ac8df5-7f61-4f35-bbe0-43af956350ad
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 204
+      message: No Content
+    headers:
+      X-Request-Id:
+      - 4788d1fa-d452-49ef-b4b7-b3da68fec03d
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-kThNFK9wGGij753lgrOdun3X'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '8'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '98'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '998'
+      X-Ratelimit-Reset-Long:
+      - '3600'
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: ''
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+recorded_with: VCR 6.4.1
