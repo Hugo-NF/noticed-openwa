@@ -1,11 +1,13 @@
 name: CI
 
-# A push to main that passes CI publishes a release candidate (release.yml). Docs-only changes publish none.
+# A push to main that passes CI publishes a release candidate (release.yml). Changes to docs and to the issue and PR
+# templates publish none.
 on:
   push:
     branches: [ main ]
     paths-ignore:
       - "**.md"
+      - ".github/ISSUE_TEMPLATE/**"
   pull_request:
 
 permissions:
