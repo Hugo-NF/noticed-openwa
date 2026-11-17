@@ -1,7 +1,7 @@
 # noticed-openwa
 
 WhatsApp delivery for [noticed](https://github.com/excid3/noticed) through [OpenWA](https://github.com/rmyndharis/openwa),
-a self-hosted WhatsApp gateway. Written against OpenWA 0.30.0.
+a self-hosted WhatsApp gateway. Supports OpenWA 0.30 (see "OpenWA versions").
 
 It implements only what a delivery needs: sending a text, an image or a document to a number, checking a number is on
 WhatsApp, reading the session's status, registering (or unregistering) the session's webhook, and verifying and
@@ -16,6 +16,18 @@ gem "noticed-openwa"
 
 Requires Ruby 3.3 or newer and noticed 2 or 3. noticed is a Rails engine, so the gem needs Rails too, the client
 included.
+
+### OpenWA versions
+
+| OpenWA | |
+|---|---|
+| 0.30.3 | Tested |
+| 0.30.2 | Unchecked |
+| 0.30.1 | Unchecked |
+| 0.30.0 | Tested |
+
+Tested: the cassettes and webhook fixtures were recorded against a real session of that version. Unchecked: not run
+against a session, though its API (`openapi.json`) is the same for every call the gem makes.
 
 ## The delivery method
 
@@ -64,6 +76,10 @@ Noticed::Openwa::Client.chat_id("+55 61 99110-1515") # => "5561991101515@c.us"
 
 The chat id WhatsApp holds can differ from a number's digits (Brazilian mobiles may be held without their ninth digit):
 send to the `whatsapp_id` the check returns.
+
+`send_text` and `send_message` take `link_preview:` (`true` or `false`) for a URL in the text. Left out, it isn't
+sent, and the session's own `linkPreview` config decides (OpenWA's default otherwise: a preview on whatsapp-web.js,
+none on Baileys). The delivery method leaves it out.
 
 ### The session's status
 
@@ -197,7 +213,9 @@ docker compose exec openwa cat /app/data/.api-key    # its API key, generated on
 
 Open `http://localhost:2785`, sign in with the key, create a session and pair it with a phone's WhatsApp (Linked
 devices: scan the QR code); its status turns `ready`. `docker compose down` stops it and keeps the session (its volumes);
-`docker compose down -v` forgets it.
+`docker compose down -v` forgets it. After a restart (`down` and `up`, or a new image) the session stays paired but
+`disconnected`, as `AUTO_START_SESSIONS` is off: start it from the dashboard, or with
+`POST /api/sessions/<id>/start`.
 
 ### Recording the cassettes
 
