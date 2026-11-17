@@ -3,12 +3,15 @@ name: Feature / task spec
 about: New feature, improvement or a well-scoped task ready to hand off
 title: ""
 labels: enhancement
+type: Feature
 ---
 <!---
     Fill out the sections below. Remove any section that doesn't apply.
     Write it so someone (or an AI agent) with no prior context can implement it.
     If you're an AI:
       - add the ai-generated label
+      - set the issue type (Feature for new functionality, Task for a scoped piece of work):
+        gh api -X PATCH repos/Hugo-NF/noticed-openwa/issues/<n> -f type=<type>
       - add release:minor or release:major when it should start a minor or major version (the README's "Releases")
       - link "blocked by" / "blocks" relationships to other issues
 -->

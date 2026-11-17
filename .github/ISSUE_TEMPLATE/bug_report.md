@@ -3,11 +3,14 @@ name: Bug report
 about: Something isn't working as expected
 title: "[FIX] "
 labels: bug
+type: Bug
 ---
 <!---
     Fill out the sections below. Remove any section that doesn't apply.
     If you're an AI:
       - add the ai-generated label
+      - set the issue type to Bug:
+        gh api -X PATCH repos/Hugo-NF/noticed-openwa/issues/<n> -f type=Bug
       - link "blocked by" / "blocks" relationships to other issues
       - keep the agent note below and fill in the branch and commit
 -->
