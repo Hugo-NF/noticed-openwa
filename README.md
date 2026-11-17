@@ -1,5 +1,14 @@
 # noticed-openwa
 
+[![Gem](https://img.shields.io/gem/v/noticed-openwa)](https://rubygems.org/gems/noticed-openwa)
+[![Downloads](https://img.shields.io/gem/dt/noticed-openwa)](https://rubygems.org/gems/noticed-openwa)
+[![CI](https://github.com/Hugo-NF/noticed-openwa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Hugo-NF/noticed-openwa/actions/workflows/ci.yml?query=branch%3Amain)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Ruby](https://img.shields.io/badge/ruby-%E2%89%A5%203.3-red)](#installation)
+[![noticed](https://img.shields.io/badge/noticed-2%20%7C%203-blue)](https://github.com/excid3/noticed)
+[![OpenWA](https://img.shields.io/badge/OpenWA-0.30-green)](#openwa-versions)
+[![Code style](https://img.shields.io/badge/code%20style-rubocop-brightgreen)](https://github.com/rails/rubocop-rails-omakase)
+
 WhatsApp delivery for [noticed](https://github.com/excid3/noticed) through [OpenWA](https://github.com/rmyndharis/openwa),
 a self-hosted WhatsApp gateway. Supports OpenWA 0.30 (see "OpenWA versions").
 
@@ -201,6 +210,10 @@ bundle exec rake          # RuboCop and the specs
 
 The specs replay VCR cassettes (`spec/fixtures/vcr_cassettes/`) recorded against a real, paired OpenWA session; noticed
 runs in a minimal Rails app (`spec/support/dummy_app.rb`). No request reaches OpenWA unless a cassette is missing.
+
+SimpleCov (`.simplecov`) measures the specs' coverage of `lib/` and writes `coverage/index.html`. In CI, octocov
+(`.octocov.yml`) reports the Ruby 4.0 run's coverage and the specs' execution time: on a pull request, as a comment
+with the diff against `main`; below 97% the `coverage` job fails.
 
 ### A local OpenWA
 

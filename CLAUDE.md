@@ -94,6 +94,9 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - Supported Rubies: 3.3 and up. A change to them changes, together: the gemspec's `required_ruby_version`, the
   `specs` matrix in `ci.yml` (its oldest entry is the gemspec's minimum), `.rubocop.yml`'s `TargetRubyVersion` (the
   minimum), and the newest Ruby the other jobs use (`lint`, `audit`, `release.yml`'s); the README states the minimum.
+- The README's badges: the gem's version and downloads and CI's status update by themselves; the license, Ruby, noticed
+  and OpenWA badges are static text, changed with what they state (the gemspec's license, `required_ruby_version`, the
+  noticed range, the "OpenWA versions" table).
 - The delivery method's options are evaluated on each delivery (a value, a lambda or a method name, through
   `evaluate_option`). A new option or default stays that way: never a value computed when the class loads (a time, an
   `ENV` read, a locale), which would keep the moment the class was loaded.
@@ -134,6 +137,10 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   weekly (Mondays, 09:00 UTC): `lint` (RuboCop), `specs` (each supported Ruby, replaying the cassettes), `audit`
   (bundler-audit on `Gemfile.lock`) and `actionlint` (the workflows, shellcheck on each `run:` included). A push to
   `main` that passes it publishes a release candidate; a scheduled run publishes nothing.
+- `coverage` (octocov, `.octocov.yml`, not on the weekly run) reports the Ruby 4.0 run's SimpleCov coverage of `lib/`
+  (`.simplecov`) and the specs' execution time: a comment on pull requests with the diff against `main`, and `main`'s
+  report as an artifact. Below the threshold (`acceptable`, 97%: the lowest coverage measured when it was introduced,
+  rounded down) it fails; never lower it to let a PR pass.
 - Actions are on major tags (a version where an action has none), kept current by Dependabot
   (`.github/dependabot.yml`): weekly, Mondays 07:00 `America/Sao_Paulo`, the bundle's and the actions' minor and patch
   updates grouped, each major in its own PR, and the compose file's images. Security updates open at once.
@@ -165,7 +172,7 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - Link "blocked by" / "blocks" relationships: `gh api repos/Hugo-NF/noticed-openwa/issues/<n>/dependencies/blocked_by
   -F issue_id=<id>`, where `<id>` is the blocking issue's `id` (`gh api repos/<owner>/<repo>/issues/<number> --jq
   .id`), not its number. Issues of other repositories can be linked the same way.
-- Issues, PRs and commits name no app that uses the gem: they're about OpenWA and noticed (the repository becomes
+- Issues, PRs and commits name no app that uses the gem: they're about OpenWA and noticed (the repository is
   public). An app's issue may reference this repository's; not the other way around.
 - Before implementing, list the open decisions and confirm them with the maintainer. Record the confirmed decisions
   as a comment on the issue.
