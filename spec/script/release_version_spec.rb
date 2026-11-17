@@ -63,6 +63,30 @@ RSpec.describe ReleaseVersion do
     end
   end
 
+  describe ".first_notes" do
+    let(:pull_requests) do
+      [ { "number" => 8, "title" => "[3] Read a session's status", "author" => { "login" => "maintainer" },
+          "url" => "https://github.com/owner/repo/pull/8", "mergeCommit" => { "oid" => "c3" } },
+        { "number" => 5, "title" => "[1] Register the session's webhook", "author" => { "login" => "maintainer" },
+          "url" => "https://github.com/owner/repo/pull/5", "mergeCommit" => { "oid" => "c1" } },
+        { "number" => 9, "title" => "Merged after the release's commit", "author" => { "login" => "maintainer" },
+          "url" => "https://github.com/owner/repo/pull/9", "mergeCommit" => { "oid" => "c4" } } ]
+    end
+
+    it "lists every pull request merged into the release since the beginning, oldest first" do
+      notes = described_class.first_notes(pull_requests, "1.0.0", "owner/repo") { |oid| %w[c1 c3].include?(oid) }
+
+      expect(notes).to eq(<<~NOTES.chomp)
+        ## What's Changed
+
+        * [1] Register the session's webhook by @maintainer in https://github.com/owner/repo/pull/5
+        * [3] Read a session's status by @maintainer in https://github.com/owner/repo/pull/8
+
+        **Full Changelog**: https://github.com/owner/repo/commits/v1.0.0
+      NOTES
+    end
+  end
+
   describe ".notes_start" do
     let(:tags) { %w[v0.1.0.rc1 v0.1.0.rc2 v0.1.0 v0.1.1.rc1 v0.1.1.rc2] }
 

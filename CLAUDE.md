@@ -108,7 +108,8 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - Versions come from the tags (`script/release_version.rb`, with its specs). Never bump
   `lib/noticed/openwa/version.rb` (a placeholder the workflow fills), create a `v*` tag or release, or `gem push` by
   hand. There's no CHANGELOG: each release's notes are GitHub's, generated from the PRs, and a release's hold all its
-  candidates'.
+  candidates'. The first release has no previous one to start from: `script/release_version.rb first_notes` lists
+  every PR merged since the beginning.
 - Tags are never moved or recreated, and a version on RubyGems can't be replaced: a wrong candidate or release ships as
   the next one (`gem yank` only hides a version).
 - RubyGems trusts the release workflow (trusted publishing, no API key): renaming `release.yml` breaks publishing until

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require "rubygems"
 
 # The release versions, computed from the repository's tags (vX.Y.Z and vX.Y.Z.rcN); nothing is committed to bump them.
@@ -7,8 +8,10 @@ require "rubygems"
 #   ruby script/release_version.rb next_rc [patch|minor|major]   # the version of the next release candidate
 #   ruby script/release_version.rb promote vX.Y.Z.rcN             # the release a candidate becomes (fails if it can't)
 #   ruby script/release_version.rb notes_start X.Y.Z[.rcN]          # the tag its release notes start from (none: empty)
+#   ruby script/release_version.rb first_notes X.Y.Z OWNER/REPO SHA # the first release's notes
 #
-# Each reads the tags from stdin, one per line (`git tag --list 'v*'`).
+# Each reads the tags from stdin, one per line (`git tag --list 'v*'`); first_notes reads the merged pull requests
+# instead (`gh pr list --state merged --json number,title,author,url,mergeCommit`).
 module ReleaseVersion
   class Error < StandardError; end
 
@@ -70,6 +73,18 @@ module ReleaseVersion
     previous && "v#{previous}"
   end
 
+  # The notes of the first release, which has no previous release for GitHub's to start from (they'd start from the
+  # latest candidate): every pull request merged into its commit since the beginning, oldest first, listed as GitHub
+  # lists them. merged?: whether a merge commit is in the released commit's history.
+  def first_notes(pull_requests, version, repository, &merged)
+    included = pull_requests.select { |pull| (oid = pull.dig("mergeCommit", "oid")) && merged.call(oid) }
+    lines = included.sort_by { _1["number"] }.map do |pull|
+      "* #{pull['title']} by @#{pull.dig('author', 'login')} in #{pull['url']}"
+    end
+    [ "## What's Changed", "", *lines, "", "**Full Changelog**: https://github.com/#{repository}/commits/v#{version}" ]
+      .join("\n")
+  end
+
   def parse(tags)
     tags.each_with_object({ releases: [], rcs: Hash.new { |hash, key| hash[key] = [] } }) do |tag, versions|
       name = tag.strip.delete_prefix("v")
@@ -92,14 +107,19 @@ module ReleaseVersion
 end
 
 if $PROGRAM_NAME == __FILE__
-  command, argument = ARGV
-  tags = $stdin.each_line.to_a
+  command, argument, repository, sha = ARGV
   begin
     case command
-    when "next_rc" then puts ReleaseVersion.next_rc(tags, argument || "patch")
-    when "promote" then puts ReleaseVersion.promote(tags, argument)
-    when "notes_start" then puts ReleaseVersion.notes_start(tags, argument)
-    else abort "usage: release_version.rb next_rc [patch|minor|major] | promote vX.Y.Z.rcN | notes_start VERSION"
+    when "next_rc" then puts ReleaseVersion.next_rc($stdin.each_line.to_a, argument || "patch")
+    when "promote" then puts ReleaseVersion.promote($stdin.each_line.to_a, argument)
+    when "notes_start" then puts ReleaseVersion.notes_start($stdin.each_line.to_a, argument)
+    when "first_notes"
+      puts(ReleaseVersion.first_notes(JSON.parse($stdin.read), argument, repository) do |oid|
+        system("git", "merge-base", "--is-ancestor", oid, sha, exception: false)
+      end)
+    else
+      abort "usage: release_version.rb next_rc [patch|minor|major] | promote vX.Y.Z.rcN | notes_start VERSION | " \
+            "first_notes VERSION OWNER/REPO SHA"
     end
   rescue ReleaseVersion::Error => e
     abort e.message

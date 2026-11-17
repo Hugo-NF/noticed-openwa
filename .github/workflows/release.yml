@@ -146,7 +146,9 @@ jobs:
           gem build "$GEM.gemspec"
           gem push "$GEM-$VERSION.gem"
 
-      # Its notes hold every change since the previous release: all of its candidates'.
+      # Its notes hold every change since the previous release: all of its candidates'. The first release has none to
+      # start from (GitHub's notes would start from the latest candidate): its notes list every pull request merged
+      # since the beginning.
       - name: Tag and release
         if: steps.version.outputs.skip != 'true'
         env:
@@ -156,8 +158,16 @@ jobs:
         run: |
           if ! gh release view "v$VERSION" > /dev/null 2>&1; then
             candidates=$(git tag --list "v$VERSION.rc*" --sort=v:refname | paste -sd ' ' | sed 's/ /, /g')
-            gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --latest --generate-notes \
-              --notes "Released from $CANDIDATE. Release candidates: $candidates." \
-              ${NOTES_START:+--notes-start-tag "$NOTES_START"}
+            intro="Released from $CANDIDATE. Release candidates: $candidates."
+            if [ -n "$NOTES_START" ]; then
+              gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --latest --generate-notes \
+                --notes "$intro" --notes-start-tag "$NOTES_START"
+            else
+              notes=$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged --base main --limit 1000 \
+                        --json number,title,author,url,mergeCommit |
+                      ruby script/release_version.rb first_notes "$VERSION" "$GITHUB_REPOSITORY" "$SHA")
+              gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --latest \
+                --notes "$(printf '%s\n\n%s' "$intro" "$notes")"
+            fi
           fi
           gh release edit "$CANDIDATE" --prerelease
