@@ -12,6 +12,8 @@ on WhatsApp. Sessions, groups, contacts and OpenWA's webhooks are left to OpenWA
 gem "noticed-openwa"
 ```
 
+Requires Ruby 3.3 or newer and noticed 2 or 3.
+
 ## The delivery method
 
 ```ruby
