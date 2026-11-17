@@ -1,0 +1,153 @@
+name: Release
+
+# The README's "Releases":
+# - a push to main that passes CI publishes the next release candidate, X.Y.Z.rcN, to RubyGems and as a GitHub
+#   pre-release (its PR's release:minor or release:major label starts a minor or major series);
+# - unticking "Set as a pre-release" on a candidate's GitHub release publishes it as X.Y.Z, from the same commit, and
+#   ticks the candidate back.
+# Versions come from the tags (script/release_version.rb): nothing is committed to bump them. RubyGems trusts this
+# workflow (trusted publishing): no API key is stored.
+on:
+  workflow_run:
+    workflows: [ CI ]
+    types: [ completed ]
+    branches: [ main ]
+  release:
+    types: [ released ]
+
+# One release at a time: each reads the tags the previous one wrote.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: read
+
+env:
+  GEM: noticed-openwa
+
+jobs:
+  candidate:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 0
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+
+      # A re-run keeps the version its commit was tagged with.
+      - name: Version
+        id: version
+        run: |
+          existing=$(git tag --points-at "$SHA" --list 'v*.rc*' | head -n 1)
+          if [ -n "$existing" ]; then
+            version=${existing#v}
+          else
+            labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" --jq '[.[].labels[].name] | join(" ")')
+            bump=patch
+            case " $labels " in
+              *" release:major "*) bump=major ;;
+              *" release:minor "*) bump=minor ;;
+            esac
+            version=$(git tag --list 'v*' | ruby script/release_version.rb next_rc "$bump")
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")" >> "$GITHUB_OUTPUT"
+
+      - uses: rubygems/configure-rubygems-credentials@v1.0.0
+
+      - name: Build and push the gem
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if curl -fsS -o /dev/null "https://rubygems.org/api/v2/rubygems/$GEM/versions/$VERSION.json"; then
+            echo "$GEM $VERSION is on RubyGems already"
+            exit 0
+          fi
+          sed -i "s/VERSION = \".*\"/VERSION = \"$VERSION\"/" lib/noticed/openwa/version.rb
+          gem build "$GEM.gemspec"
+          gem push "$GEM-$VERSION.gem"
+
+      - name: Tag and pre-release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NOTES_START: ${{ steps.version.outputs.notes_start }}
+        run: |
+          gh release view "v$VERSION" > /dev/null 2>&1 && exit 0
+          gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --prerelease --generate-notes \
+            ${NOTES_START:+--notes-start-tag "$NOTES_START"}
+
+  release:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+
+      # Only a candidate becomes a release. One that can't (not the latest of its series, already released) is ticked
+      # back as a pre-release, and the run fails with why.
+      - name: Version
+        id: version
+        run: |
+          case "$CANDIDATE" in
+            v*.rc*) ;;
+            *) echo "::notice::$CANDIDATE isn't a release candidate: nothing to release"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+          if ! version=$(git tag --list 'v*' | ruby script/release_version.rb promote "$CANDIDATE" 2>&1); then
+            gh release edit "$CANDIDATE" --prerelease
+            echo "::error::$CANDIDATE can't be released: $version. It's a pre-release again."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-list -n 1 "$CANDIDATE")" >> "$GITHUB_OUTPUT"
+
+      - uses: rubygems/configure-rubygems-credentials@v1.0.0
+        if: steps.version.outputs.skip != 'true'
+
+      - name: Build and push the gem
+        if: steps.version.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if curl -fsS -o /dev/null "https://rubygems.org/api/v2/rubygems/$GEM/versions/$VERSION.json"; then
+            echo "$GEM $VERSION is on RubyGems already"
+            exit 0
+          fi
+          sed -i "s/VERSION = \".*\"/VERSION = \"$VERSION\"/" lib/noticed/openwa/version.rb
+          gem build "$GEM.gemspec"
+          gem push "$GEM-$VERSION.gem"
+
+      # Its notes hold every change since the previous release: all of its candidates'.
+      - name: Tag and release
+        if: steps.version.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NOTES_START: ${{ steps.version.outputs.notes_start }}
+          SHA: ${{ steps.version.outputs.sha }}
+        run: |
+          if ! gh release view "v$VERSION" > /dev/null 2>&1; then
+            candidates=$(git tag --list "v$VERSION.rc*" --sort=v:refname | paste -sd ' ' | sed 's/ /, /g')
+            gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --latest --generate-notes \
+              --notes "Released from $CANDIDATE. Release candidates: $candidates." \
+              ${NOTES_START:+--notes-start-tag "$NOTES_START"}
+          fi
+          gh release edit "$CANDIDATE" --prerelease
