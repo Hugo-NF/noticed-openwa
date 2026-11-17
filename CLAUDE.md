@@ -1,7 +1,7 @@
 # noticed-openwa
 
-A Ruby gem: WhatsApp delivery for noticed through OpenWA's REST API (written against OpenWA 0.30.0). It knows
-nothing of the apps that use it.
+A Ruby gem: WhatsApp delivery for noticed through OpenWA's REST API (the versions it supports: the README's "OpenWA
+versions"). It knows nothing of the apps that use it.
 
 ## Commands
 
@@ -117,12 +117,15 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 
 ## Local OpenWA
 
-- `docker-compose.yml` runs the OpenWA the gem is written against (the README's version), with its own Postgres, on
+- `docker-compose.yml` runs the latest OpenWA in the README's "OpenWA versions" table, with its own Postgres, on
   `http://localhost:2785`. Every image is pinned to a version and every service has a memory limit; a new service gets
   both, and every secret is a local-only default.
-- A new OpenWA version (Dependabot's PR, or by hand) changes, together: the compose file's image, the README's
-  "written against" version, and the cassettes of every call whose request or answer changed (re-recorded by the
-  maintainer). The specs replaying the old cassettes passing doesn't prove the new version answers the same.
+- A new OpenWA version (Dependabot's PR, or by hand) changes, together: the compose file's image, a new row at the
+  top of the README's "OpenWA versions" table (`Tested`, or `Unchecked` for one only compared by its `openapi.json`),
+  and the cassettes and webhook fixtures whose request or answer changed (re-recorded by the maintainer). Record them
+  all again and compare each with the committed one (statuses, headers, body shapes; not ids or times): an unchanged
+  one stays as it was. The specs replaying the old cassettes passing doesn't prove the new version answers the same.
+  A version is dropped from the table only when the gem stops working with it, with a spec.
 
 ## CI and dependencies
 
