@@ -8,8 +8,9 @@ require "uri"
 
 module Noticed
   module Openwa
-    # The parts of OpenWA's REST API a delivery needs: sending a text, an image or a document to a chat, and checking a
-    # number is on WhatsApp. Every call authenticates with the `X-API-Key` header, in the given session.
+    # The parts of OpenWA's REST API a delivery needs: sending a text, an image or a document to a chat, checking a
+    # number is on WhatsApp, and registering (or unregistering) the session's webhook. Every call authenticates with the `X-API-Key`
+    # header, in the given session.
     class Client
       CHAT_SUFFIX = "@c.us"
       IDEMPOTENCY_KEY = /\A[\x21-\x7e]{1,255}\z/
@@ -81,6 +82,42 @@ module Noticed
         end
       end
 
+      # The session's webhooks, as OpenWA returns them ({ "id" =>, "url" =>, "events" =>, "active" =>, ... }); never
+      # their secrets or headers.
+      def webhooks
+        request(Net::HTTP::Get, "webhooks", operation: "webhooks")
+      end
+
+      # Registers the session's webhook for url, safe to call on every deploy: the first webhook with the same url is
+      # updated (and activated again), otherwise one is created. secret signs every delivery (`X-OpenWA-Signature`);
+      # headers, when given, replace the stored ones. Returns the webhook.
+      def register_webhook(url:, secret:, events:, retry_count: nil, headers: nil)
+        raise ArgumentError, "url, secret and events are required" if blank?(url) || blank?(secret) || Array(events).empty?
+
+        body = { url:, events: Array(events), secret:, headers:, retryCount: retry_count }.compact
+        listed = request(Net::HTTP::Get, "webhooks", operation: "register_webhook")
+        existing = listed.find { |webhook| webhook["url"] == url } if listed.is_a?(Array)
+        if existing
+          request(Net::HTTP::Put, "webhooks/#{URI.encode_www_form_component(existing['id'])}",
+                  body: body.merge(active: true), operation: "register_webhook", secrets: [ secret ])
+        else
+          request(Net::HTTP::Post, "webhooks", body:, operation: "register_webhook", secrets: [ secret ])
+        end
+      end
+
+      # Deletes the session's webhooks for url, every one of them. Returns how many were deleted: 0 when there was none.
+      def unregister_webhook(url:)
+        raise ArgumentError, "url is required" if blank?(url)
+
+        listed = request(Net::HTTP::Get, "webhooks", operation: "unregister_webhook")
+        matching = listed.is_a?(Array) ? listed.select { |webhook| webhook["url"] == url } : []
+        matching.each do |webhook|
+          request(Net::HTTP::Delete, "webhooks/#{URI.encode_www_form_component(webhook['id'])}",
+                  operation: "unregister_webhook")
+        end
+        matching.size
+      end
+
       private
 
       def send_file(chat_id, file, caption:, idempotency_key:)
@@ -105,7 +142,8 @@ module Noticed
                                                          operation: endpoint.tr("-", "_"))
       end
 
-      def request(method, path, operation:, body: nil, headers: {})
+      # secrets: values kept out of the error's message, should OpenWA's reason quote them.
+      def request(method, path, operation:, body: nil, headers: {}, secrets: [])
         uri = URI("#{url}/api/sessions/#{URI.encode_www_form_component(session_id)}/#{path}")
         request = method.new(uri, headers.merge("X-API-Key" => @api_key, "Accept" => "application/json"))
         if body
@@ -113,7 +151,7 @@ module Noticed
           request.body = JSON.generate(body)
         end
 
-        handle(http(uri).request(request), operation)
+        handle(http(uri).request(request), operation, secrets)
       rescue *NETWORK_ERRORS => e
         raise RetryableError, "OpenWA #{operation}: #{e.class}"
       end
@@ -127,12 +165,13 @@ module Noticed
         end
       end
 
-      def handle(response, operation)
+      def handle(response, operation, secrets)
         status = response.code.to_i
         body = parse(response.body)
         return body if status.between?(200, 299)
 
-        raise error_class(status, body).new(error_message(operation, status, body),
+        body = {} unless body.is_a?(Hash)
+        raise error_class(status, body).new(error_message(operation, status, body, secrets),
                                             status:, code: body["code"], retry_after: retry_after(response, body))
       end
 
@@ -154,8 +193,9 @@ module Noticed
         end
       end
 
-      def error_message(operation, status, body)
-        details = messages(body).gsub(NUMBER, "[FILTERED]")
+      def error_message(operation, status, body, secrets)
+        details = secrets.reduce(messages(body)) { |text, secret| text.gsub(secret.to_s, "[FILTERED]") }
+        details = details.gsub(NUMBER, "[FILTERED]")
         [ "OpenWA #{operation}: #{status}", body["code"], (details unless details.empty?) ].compact.join(" ")
       end
 
@@ -168,7 +208,7 @@ module Noticed
 
       def parse(body)
         parsed = body.to_s.empty? ? {} : JSON.parse(body)
-        parsed.is_a?(Hash) ? parsed : {}
+        parsed.is_a?(Hash) || parsed.is_a?(Array) ? parsed : {}
       rescue JSON::ParserError
         {}
       end

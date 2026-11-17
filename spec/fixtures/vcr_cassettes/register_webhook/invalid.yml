@@ -1,0 +1,182 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Request-Id:
+      - 3b03b82e-e7f3-4cd7-96b5-cc3161da8940
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-l0l-kQbUIeJGgMItoHOW4u1U'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '1'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '91'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '976'
+      X-Ratelimit-Reset-Long:
+      - '2764'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '2'
+      Etag:
+      - W/"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: "[]"
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+- request:
+    method: post
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/webhooks
+    body:
+      encoding: UTF-8
+      string: '{"url":"https://openwa-webhook-url.placeholder/invalid","events":["message.ack"],"secret":"too-short"}'
+    headers:
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 400
+      message: Bad Request
+    headers:
+      X-Request-Id:
+      - '08effe16-f33c-4f82-aa6a-b75fd0277748'
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-HTm5ip9ibCAJRc546BknuL75'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '8'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '98'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '990'
+      X-Ratelimit-Reset-Long:
+      - '2764'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '107'
+      Etag:
+      - W/"6b-FhQRqq1/ID7WowARPXKJemcG1LA"
+      Date:
+      - Tue, 17 Nov 2026 20:33:46 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '{"message":["secret must be longer than or equal to 16 characters"],"error":"Bad
+        Request","statusCode":400}'
+  recorded_at: Tue, 17 Nov 2026 20:33:46 GMT
+recorded_with: VCR 6.4.1
