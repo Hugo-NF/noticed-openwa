@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.description = "A noticed delivery method and a small client for OpenWA's REST API: sends a text, an image or " \
                      "a document to a number, and checks a number is on WhatsApp."
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2"
+  spec.required_ruby_version = ">= 3.3"
 
   spec.metadata = { "rubygems_mfa_required" => "true" }
 

@@ -71,7 +71,7 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - RuboCop (`rubocop-rails-omakase`, `rubocop-rspec`), 120 characters per line.
 - Guard clauses with a blank line after. `&.` over explicit nil checks.
 - Comments say why, not what; no issue references (`#123`) in comments.
-- Supported Rubies: 3.2 and up (`required_ruby_version`, CI's matrix).
+- Supported Rubies: 3.3 and up (`required_ruby_version`, CI's matrix).
 
 ## Releases
 
