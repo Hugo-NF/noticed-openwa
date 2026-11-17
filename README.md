@@ -4,8 +4,8 @@ WhatsApp delivery for [noticed](https://github.com/excid3/noticed) through [Open
 a self-hosted WhatsApp gateway. Written against OpenWA 0.30.0.
 
 It implements only what a delivery needs: sending a text, an image or a document to a number, checking a number is on
-WhatsApp, and registering (or unregistering) the session's webhook. Sessions, groups, contacts and the rest of
-OpenWA's webhook administration are left to OpenWA itself.
+WhatsApp, registering (or unregistering) the session's webhook, and verifying and parsing its deliveries. Sessions,
+groups, contacts and the rest of OpenWA's webhook administration are left to OpenWA itself.
 
 ## Installation
 
@@ -66,12 +66,13 @@ send to the `whatsapp_id` the check returns.
 
 ### The session's webhook
 
-OpenWA reports what happens to a sent message (`message.ack`, `message.failed`) and to the session
-(`session.status`, `session.disconnected`, ...) through a webhook registered on the session. The client registers it:
+OpenWA reports what happens to a sent message (`message.ack`) and to the session (`session.status`,
+`session.disconnected`, ...) through a webhook registered on the session. The client registers it:
 
 ```ruby
 client.register_webhook(url: "https://app.example.com/openwa/events", secret: ENV["OPENWA_WEBHOOK_SECRET"],
-                        events: %w[message.ack message.failed session.status session.disconnected],
+                        events: %w[message.ack session.status session.disconnected session.reconnect_loop
+                                   session.restriction],
                         retry_count: 3)   # => { "id" => "...", "url" => "...", "events" => [...], "active" => true, ... }
 client.webhooks                           # => the session's webhooks, without their secrets and headers
 client.unregister_webhook(url: "https://app.example.com/openwa/events")   # => 1, the webhooks deleted
@@ -88,6 +89,52 @@ of the body. It's never returned, so keep it where the app that receives the del
 `unregister_webhook` deletes every webhook of the session with that URL, and returns how many (0 when there was none,
 without an error). Other webhooks of the session, and testing or redriving webhooks, are left to OpenWA's dashboard.
 
+## Webhook deliveries
+
+`Noticed::Openwa::Webhook` verifies a delivery and turns its body into an event; the route, the controller, the jobs
+and what each event means stay in the app. It holds no state and needs no configuration:
+
+```ruby
+class OpenwaEventsController < ActionController::API
+  def create
+    body = request.raw_post
+    Noticed::Openwa::Webhook.verify!(body, request.headers, ENV["OPENWA_WEBHOOK_SECRET"])
+    event = Noticed::Openwa::Webhook.parse(body, request.headers)
+    OpenwaEventJob.perform_later(event.payload) if event   # or act on the event's fields here
+    head :ok
+  rescue Noticed::Openwa::InvalidSignatureError
+    head :unauthorized
+  end
+end
+```
+
+- **`verify!(raw_body, headers, secret)`** checks `X-OpenWA-Signature` (`sha256=<hex>`, the HMAC-SHA256 of the raw
+  body with the webhook's secret) in constant time. It raises `Noticed::Openwa::InvalidSignatureError` when the
+  header is missing, malformed or not the body's. Pass the body exactly as received, before any parsing. `headers` is
+  Rails' `request.headers`, a Rack env or a hash in any case. OpenWA signs no timestamp, and its retries and redrives
+  keep the first one, so there's no time window: dedupe on the event's `idempotency_key` instead.
+- **`parse(raw_body, headers)`** returns a `Noticed::Openwa::Webhook::Event`, or `nil` for an event it doesn't handle
+  (so the webhook can subscribe to more). A body that isn't OpenWA's raises `Noticed::Openwa::Error`.
+
+Every event has `type` (`:message_status` or `:session_state`), `event` (OpenWA's, such as `"message.ack"`),
+`idempotency_key` (the same across OpenWA's retries and redrives of a delivery), `occurred_at` (a `Time`),
+`session_id` and `payload` (the parsed body):
+
+| OpenWA's event | `type` | Fields |
+|---|---|---|
+| `message.ack` | `:message_status` | `status`: `"sent"`, `"delivered"`, `"read"` or `"failed"`; `message_id`; `chat_id` |
+| `session.status` | `:session_state` | `state`: OpenWA's status (`"created"`, `"initializing"`, `"qr_ready"`, `"authenticating"`, `"ready"`, `"disconnected"`, `"action_required"`, `"failed"`) |
+| `session.disconnected` | `:session_state` | `state: "disconnected"`; `reason` (`"LOGOUT"`, ...) |
+| `session.reconnect_loop` | `:session_state` | `state: "reconnecting"`; `details`: `{ attempts:, next_delay_ms: }` |
+| `session.restriction` | `:session_state` | `state: "restricted"`, or `"unrestricted"` when lifted; `details`: `{ kind:, code:, expires_at: }` |
+
+- **`message_id`** is the `messageId` the `send_*` call returned. **`chat_id`** is the chat as WhatsApp holds it,
+  often a LID (`<digits>@lid`) rather than the number the message was sent to: match on `message_id`.
+- A message's status only moves forward, and a status the phone skipped isn't sent: a message read at once has no
+  `delivered`. OpenWA gives no reason for a failure.
+- Subscribe to `message.ack`, not `message.failed`: OpenWA sends `message.failed` as well as the `failed` ack, under
+  another idempotency key, so the parser skips it, along with `message.sent`.
+
 ## Errors
 
 All are `Noticed::Openwa::Error`, with the HTTP `status`, OpenWA's `code` and, for a rate limit, `retry_after` (seconds).
@@ -100,6 +147,7 @@ Their messages name the call, the status and OpenWA's reason, with any phone num
 | `RetryableError` | Nothing was sent: the session isn't started or ready, `IDEMPOTENCY_KEY_IN_PROGRESS`, a rate limit (`429`), a timeout, `5xx`, OpenWA unreachable | Yes, with the same key |
 | `UnknownOutcomeError` | `IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent | No: a new key may send it twice |
 | `RequestError` | OpenWA refused the request itself | No |
+| `InvalidSignatureError` | A webhook delivery's `X-OpenWA-Signature` is missing, malformed or not the body's (`Webhook.verify!`) | No: refuse the delivery |
 
 Retrying is the app's choice, for example on the delivery method's load hook:
 
@@ -167,6 +215,26 @@ so none is left on the session.
 `spec/fixtures/vcr_cassettes/templates/send_text.yml` is an ERB template of a recorded send, for the answers a real
 session can't be made to give (`409`, `429`, `503`); use it with `record: :none`.
 
+### Recording the webhook fixtures
+
+`spec/fixtures/webhooks/` holds real deliveries, filtered. To record them again, for a new OpenWA version:
+
+1. Register `OPENWA_TEST_WEBHOOK_URL` on the session with a new secret, kept in a file
+   outside the repository, and subscribe it to `message.ack`, `message.failed`, `message.sent` and the session's
+   events.
+2. Send a text to your `OPENWA_TEST_NUMBER` and open it on the phone, then log the session out (Linked devices) and
+   pair it again.
+3. Save the requests that URL received, oldest first, as
+   `{ "data": [{ "headers": { ... }, "content": "<raw body>" }] }`, and run
+   `ruby script/webhook_fixtures.rb <requests>.json <secret file>`. It checks each delivery's real signature, replaces
+   the session, the WhatsApp ids and your number with placeholders, and signs the bodies again with the specs'
+   secret. The acks a recording can't trigger on demand (`sent`, `delivered`, `failed`) and `message.failed` are made
+   from the `read` ack, and their `note` says so.
+4. Unregister the webhook, and check the fixtures for real values before committing them.
+
+`session.reconnect_loop` and `session.restriction` can't be triggered: their specs build the body as OpenWA's code
+does.
+
 ## Releases
 
 Published by `.github/workflows/release.yml`; versions come from the tags (`script/release_version.rb`), and
@@ -175,8 +243,9 @@ Published by `.github/workflows/release.yml`; versions come from the tags (`scri
 - **Release candidates.** Every push to `main` that passes CI (docs-only changes aside) publishes the next candidate,
   `X.Y.Z.rcN`, to RubyGems and as a GitHub pre-release tagged `vX.Y.Z.rcN`, with the changes since the previous tag as its
   notes. The series continues (`0.1.0.rc12` → `0.1.0.rc13`) until it's released; after `0.1.0`, the next is `0.1.1.rc1`.
-  A PR labeled `release:minor` or `release:major` starts the next minor or major series instead (`0.2.0.rc1`,
-  `1.0.0.rc1`); the first ever is `0.1.0.rc1`.
+  A PR labeled `release:minor` or `release:major` starts the next minor or major series from the open one instead,
+  released or not (`0.1.0.rc2` → `0.2.0.rc1` or `1.0.0.rc1`), unless the open series already is one (`0.2.0.rc1` and
+  a minor label → `0.2.0.rc2`); a series left behind is never released. The first ever is `0.1.0.rc1`.
 - **Releases.** Untick "Set as a pre-release" on the latest candidate's GitHub release: the workflow publishes `X.Y.Z`
   from that candidate's commit to RubyGems, tags it `vX.Y.Z` with a release whose notes hold every change since the
   previous release (all its candidates'), and ticks the candidate back as a pre-release. A candidate that can't be
