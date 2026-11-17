@@ -1,0 +1,28 @@
+name: RubyGems credentials
+description: >-
+  Exchanges the workflow's OIDC token for a short-lived RubyGems key (trusted publishing) and exports it as
+  GEM_HOST_API_KEY. rubygems/configure-rubygems-credentials does the same, but can't pass the owner a pending trusted
+  publisher requires.
+inputs:
+  owner:
+    description: The RubyGems account (its immutable ID) that owns the gem, or will own it on its first push.
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        OWNER: ${{ inputs.owner }}
+      run: |
+        jwt=$(curl -fsS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=rubygems.org" | jq -r .value)
+        echo "::add-mask::$jwt"
+        response=$(jq -n --arg jwt "$jwt" --arg owner "$OWNER" '{jwt: $jwt, owner: $owner}' |
+          curl -sS --fail-with-body -X POST https://rubygems.org/api/v1/oidc/trusted_publisher/exchange_token \
+            -H "Content-Type: application/json" -H "Accept: application/json" --data @-) || {
+          echo "::error::RubyGems refused the trusted publishing exchange: $response"
+          exit 1
+        }
+        key=$(jq -r .rubygems_api_key <<< "$response")
+        echo "::add-mask::$key"
+        echo "GEM_HOST_API_KEY=$key" >> "$GITHUB_ENV"

@@ -6,7 +6,8 @@ name: Release
 # - unticking "Set as a pre-release" on a candidate's GitHub release publishes it as X.Y.Z, from the same commit, and
 #   ticks the candidate back.
 # Versions come from the tags (script/release_version.rb): nothing is committed to bump them. RubyGems trusts this
-# workflow (trusted publishing): no API key is stored.
+# workflow (trusted publishing): no API key is stored. RUBYGEMS_OWNER is the RubyGems account that owns the gem (its
+# immutable ID): rubygems.org requires it to create a gem from a pending trusted publisher.
 on:
   workflow_run:
     workflows: [ CI ]
@@ -27,6 +28,7 @@ permissions:
 
 env:
   GEM: noticed-openwa
+  RUBYGEMS_OWNER: "256280"
 
 jobs:
   candidate:
@@ -64,7 +66,9 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")" >> "$GITHUB_OUTPUT"
 
-      - uses: rubygems/configure-rubygems-credentials@v1.0.0
+      - uses: ./.github/actions/rubygems-credentials
+        with:
+          owner: ${{ env.RUBYGEMS_OWNER }}
 
       - name: Build and push the gem
         env:
@@ -120,8 +124,10 @@ jobs:
           echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-list -n 1 "$CANDIDATE")" >> "$GITHUB_OUTPUT"
 
-      - uses: rubygems/configure-rubygems-credentials@v1.0.0
+      - uses: ./.github/actions/rubygems-credentials
         if: steps.version.outputs.skip != 'true'
+        with:
+          owner: ${{ env.RUBYGEMS_OWNER }}
 
       - name: Build and push the gem
         if: steps.version.outputs.skip != 'true'

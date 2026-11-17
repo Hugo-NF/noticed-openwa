@@ -84,7 +84,8 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   hand. There's no CHANGELOG: each release's notes are GitHub's, generated from the PRs, and a release's hold all its
   candidates'.
 - RubyGems trusts the release workflow (trusted publishing, no API key): renaming `release.yml` breaks publishing until
-  the trusted publisher on rubygems.org is updated.
+  the trusted publisher on rubygems.org is updated. `.github/actions/rubygems-credentials` exchanges its OIDC token,
+  naming the owning account (`RUBYGEMS_OWNER`, its immutable ID), which a pending trusted publisher requires.
 
 ## Commits and pull requests
 
