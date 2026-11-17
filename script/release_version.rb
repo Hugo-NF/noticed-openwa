@@ -19,19 +19,22 @@ module ReleaseVersion
 
   module_function
 
-  # The next candidate: the open series' next rcN, or rc1 of the version the bump makes from the last release (0.1.0
-  # without one). A bump the open series already covers continues it (0.2.0.rc3 then a minor bump: 0.2.0.rc4).
+  # The next candidate. Without an open series (a version with candidates, not released): rc1 of the version the bump
+  # makes from the last release (0.1.0 for the first ever). With one, a patch bump continues it, and so does a bump it
+  # already covers from the version below it, released or not (0.1.0 then 0.2.0.rc3 and a minor bump: 0.2.0.rc4);
+  # otherwise the bump starts a series from it, released or not (0.1.0.rc2 and a minor bump: 0.2.0.rc1).
   def next_rc(tags, bump = "patch")
     raise Error, "unknown bump #{bump.inspect}" unless BUMPS.include?(bump)
 
     versions = parse(tags)
     last_release = versions[:releases].max
-    target = last_release ? bumped(last_release, bump) : FIRST
-    open = versions[:rcs].keys.select { |base| last_release.nil? || base > last_release }.max
+    series = versions[:rcs].keys.select { |base| last_release.nil? || base > last_release }
+    open = series.max
+    return "#{last_release ? bumped(last_release, bump) : FIRST}.rc1" unless open
 
-    return "#{target}.rc1" if open.nil? || target > open
-
-    "#{open}.rc#{versions[:rcs][open].max + 1}"
+    below = [ last_release, *series ].compact.select { |version| version < open }.max
+    covered = bump == "patch" || (below && open >= bumped(below, bump))
+    covered ? "#{open}.rc#{versions[:rcs][open].max + 1}" : "#{bumped(open, bump)}.rc1"
   end
 
   # The release a candidate becomes: its base version, when it's the latest candidate of the open series and that

@@ -9,12 +9,20 @@ RSpec.describe ReleaseVersion do
       [ [], "major" ] => "0.1.0.rc1",
       [ %w[v0.1.0.rc1], "patch" ] => "0.1.0.rc2",
       [ %w[v0.1.0.rc1 v0.1.0.rc12 v0.1.0.rc2], "patch" ] => "0.1.0.rc13",
+      [ %w[v0.1.0.rc2], "minor" ] => "0.2.0.rc1",
+      [ %w[v0.1.0.rc2], "major" ] => "1.0.0.rc1",
+      [ %w[v0.1.0.rc2 v0.2.0.rc1], "minor" ] => "0.2.0.rc2",
+      [ %w[v0.1.0.rc2 v0.2.0.rc1], "patch" ] => "0.2.0.rc2",
+      [ %w[v0.1.0.rc2 v0.2.0.rc1], "major" ] => "1.0.0.rc1",
+      [ %w[v0.1.0.rc2 v1.0.0.rc1], "minor" ] => "1.0.0.rc2",
+      [ %w[v0.1.0.rc2 v1.0.0.rc1], "major" ] => "1.0.0.rc2",
       [ %w[v0.1.0.rc12 v0.1.0], "patch" ] => "0.1.1.rc1",
       [ %w[v0.1.0.rc12 v0.1.0 v0.1.1.rc1], "patch" ] => "0.1.1.rc2",
       [ %w[v0.1.0 v0.1.1.rc3], "minor" ] => "0.2.0.rc1",
       [ %w[v0.1.0 v0.2.0.rc3], "minor" ] => "0.2.0.rc4",
       [ %w[v0.1.0 v0.2.0.rc3], "patch" ] => "0.2.0.rc4",
       [ %w[v0.1.0 v0.2.0.rc3], "major" ] => "1.0.0.rc1",
+      [ %w[v0.1.0 v1.0.0.rc1], "minor" ] => "1.0.0.rc2",
       [ %w[v1.2.3], "minor" ] => "1.3.0.rc1",
       [ %w[v1.2.3], "major" ] => "2.0.0.rc1",
       [ %w[v0.1.0 other-tag v0.1.0.beta1], "patch" ] => "0.1.1.rc1"
@@ -36,6 +44,10 @@ RSpec.describe ReleaseVersion do
   describe ".promote" do
     it "is the candidate's version" do
       expect(described_class.promote(%w[v0.1.0.rc11 v0.1.0.rc12], "v0.1.0.rc12")).to eq("0.1.0")
+    end
+
+    it "releases a series that left an unreleased one behind" do
+      expect(described_class.promote(%w[v0.1.0.rc1 v0.1.0.rc2 v1.0.0.rc1], "v1.0.0.rc1")).to eq("1.0.0")
     end
 
     {
