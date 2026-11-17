@@ -195,4 +195,101 @@ RSpec.describe Noticed::Openwa::Client do
       end
     end
   end
+
+  describe "#webhooks", vcr: { cassette_name: "webhooks/listed" } do
+    before do
+      client.register_webhook(url: OpenwaSpecSupport.webhook_url, secret: OpenwaSpecSupport.webhook_secret,
+                              events: [ "session.status" ])
+    end
+
+    # The recording session keeps no webhook: its events would go on being delivered.
+    after { client.unregister_webhook(url: OpenwaSpecSupport.webhook_url) }
+
+    it "returns the session's webhooks, the registered one included" do
+      expect(client.webhooks).to include(a_hash_including("id" => a_kind_of(String), "url" => OpenwaSpecSupport.webhook_url,
+                                                          "events" => [ "session.status" ], "active" => true))
+    end
+  end
+
+  describe "#register_webhook" do
+    context "when the session has a webhook with the same url", vcr: { cassette_name: "register_webhook/updated" } do
+      subject(:register) do
+        client.register_webhook(url: OpenwaSpecSupport.webhook_url, secret: OpenwaSpecSupport.webhook_secret,
+                                events: [ "message.ack", "message.failed" ], retry_count: 3)
+      end
+
+      before do
+        client.register_webhook(url: OpenwaSpecSupport.webhook_url, secret: OpenwaSpecSupport.webhook_secret,
+                                events: [ "session.status" ])
+      end
+
+      after { client.unregister_webhook(url: OpenwaSpecSupport.webhook_url) }
+
+      it "updates it, leaving one webhook for the url", :aggregate_failures do
+        webhook = register
+
+        expect(webhook).to include("url" => OpenwaSpecSupport.webhook_url, "events" => [ "message.ack", "message.failed" ],
+                                   "retryCount" => 3, "active" => true)
+        expect(a_request(:put, %r{/webhooks/#{webhook['id']}\z}).with(body: hash_including("active" => true)))
+          .to have_been_made.at_least_once
+        expect(client.webhooks.count { |each| each["url"] == OpenwaSpecSupport.webhook_url }).to eq(1)
+      end
+    end
+
+    context "when the request is invalid", vcr: { cassette_name: "register_webhook/invalid" } do
+      subject(:register) do
+        client.register_webhook(url: "#{OpenwaSpecSupport.webhook_url}/invalid", secret: "too-short", events: [ "message.ack" ])
+      end
+
+      it "raises a request error, without the secret", :aggregate_failures do
+        expect { register }.to raise_error(Noticed::Openwa::RequestError, /register_webhook: 400/) do |error|
+          expect(error.message).not_to include("too-short")
+        end
+      end
+    end
+
+    context "when the API key is wrong", vcr: { cassette_name: "register_webhook/wrong_api_key" } do
+      subject(:client) { OpenwaSpecSupport.client(api_key: "wrong-api-key") }
+
+      it "raises an authentication error" do
+        expect do
+          client.register_webhook(url: OpenwaSpecSupport.webhook_url, secret: OpenwaSpecSupport.webhook_secret,
+                                  events: [ "message.ack" ])
+        end.to raise_error(Noticed::Openwa::AuthenticationError, /register_webhook: 401/)
+      end
+    end
+
+    it "requires the url, the secret and the events" do
+      expect { client.register_webhook(url: OpenwaSpecSupport.webhook_url, secret: "s" * 16, events: []) }
+        .to raise_error(ArgumentError, /required/)
+    end
+  end
+
+  describe "#unregister_webhook" do
+    context "when the session has a webhook with the url", vcr: { cassette_name: "unregister_webhook/deleted" } do
+      subject(:unregister) { client.unregister_webhook(url: OpenwaSpecSupport.webhook_url) }
+
+      before do
+        client.register_webhook(url: OpenwaSpecSupport.webhook_url, secret: OpenwaSpecSupport.webhook_secret,
+                                events: [ "session.status" ])
+      end
+
+      it "deletes it", :aggregate_failures do
+        expect(unregister).to eq(1)
+        expect(a_request(:delete, %r{/webhooks/[^/]+\z})).to have_been_made.once
+        expect(client.webhooks.none? { |webhook| webhook["url"] == OpenwaSpecSupport.webhook_url }).to be(true)
+      end
+    end
+
+    context "when the session has no webhook with the url", vcr: { cassette_name: "unregister_webhook/none" } do
+      it "deletes nothing", :aggregate_failures do
+        expect(client.unregister_webhook(url: "#{OpenwaSpecSupport.webhook_url}/unregistered")).to eq(0)
+        expect(a_request(:delete, /webhooks/)).not_to have_been_made
+      end
+    end
+
+    it "requires the url" do
+      expect { client.unregister_webhook(url: " ") }.to raise_error(ArgumentError, /required/)
+    end
+  end
 end

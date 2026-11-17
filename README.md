@@ -3,8 +3,9 @@
 WhatsApp delivery for [noticed](https://github.com/excid3/noticed) through [OpenWA](https://github.com/rmyndharis/openwa),
 a self-hosted WhatsApp gateway. Written against OpenWA 0.30.0.
 
-It implements only what a delivery needs: sending a text, an image or a document to a number, and checking a number is
-on WhatsApp. Sessions, groups, contacts and OpenWA's webhooks are left to OpenWA itself.
+It implements only what a delivery needs: sending a text, an image or a document to a number, checking a number is on
+WhatsApp, and registering (or unregistering) the session's webhook. Sessions, groups, contacts and the rest of
+OpenWA's webhook administration are left to OpenWA itself.
 
 ## Installation
 
@@ -12,7 +13,8 @@ on WhatsApp. Sessions, groups, contacts and OpenWA's webhooks are left to OpenWA
 gem "noticed-openwa"
 ```
 
-Requires Ruby 3.3 or newer and noticed 2 or 3.
+Requires Ruby 3.3 or newer and noticed 2 or 3. noticed is a Rails engine, so the gem needs Rails too, the client
+included.
 
 ## The delivery method
 
@@ -62,6 +64,30 @@ Noticed::Openwa::Client.chat_id("+55 61 99110-1515") # => "5561991101515@c.us"
 The chat id WhatsApp holds can differ from a number's digits (Brazilian mobiles may be held without their ninth digit):
 send to the `whatsapp_id` the check returns.
 
+### The session's webhook
+
+OpenWA reports what happens to a sent message (`message.ack`, `message.failed`) and to the session
+(`session.status`, `session.disconnected`, ...) through a webhook registered on the session. The client registers it:
+
+```ruby
+client.register_webhook(url: "https://app.example.com/openwa/events", secret: ENV["OPENWA_WEBHOOK_SECRET"],
+                        events: %w[message.ack message.failed session.status session.disconnected],
+                        retry_count: 3)   # => { "id" => "...", "url" => "...", "events" => [...], "active" => true, ... }
+client.webhooks                           # => the session's webhooks, without their secrets and headers
+client.unregister_webhook(url: "https://app.example.com/openwa/events")   # => 1, the webhooks deleted
+```
+
+It's idempotent: the session's first webhook with the same URL is updated (its events, secret and retries, and it's
+activated again), otherwise one is created. Call it on every deploy, or whenever a session is created or replaced:
+a new session has no webhook. `headers:` (a hash) is optional: when given, it replaces the webhook's custom headers;
+left out, an update keeps them.
+
+The secret (16 to 255 characters) signs every delivery: OpenWA sends `X-OpenWA-Signature: sha256=<hex>`, the HMAC-SHA256
+of the body. It's never returned, so keep it where the app that receives the deliveries can verify them.
+
+`unregister_webhook` deletes every webhook of the session with that URL, and returns how many (0 when there was none,
+without an error). Other webhooks of the session, and testing or redriving webhooks, are left to OpenWA's dashboard.
+
 ## Errors
 
 All are `Noticed::Openwa::Error`, with the HTTP `status`, OpenWA's `code` and, for a rate limit, `retry_after` (seconds).
@@ -108,23 +134,35 @@ devices: scan the QR code); its status turns `ready`. `docker compose down` stop
 
 ### Recording the cassettes
 
-Put the session's values in the git-ignored `.env.test.local`, then delete the cassette (or set
-`VCR_RECORD_MODE=all`) and run its spec with `OPENWA_RECORD=true`, which reads that file (without it, the specs always
-replay with the placeholders):
+Copy `.env.test.example` to the git-ignored `.env.test.local` and fill in the session's values (each is explained
+there), then delete the cassette (or set `VCR_RECORD_MODE=all`) and run its spec with `OPENWA_RECORD=true`, which reads
+that file (without it, the specs always replay with the placeholders):
 
 ```
-OPENWA_URL=http://localhost:2785          # the local OpenWA above
-OPENWA_API_KEY=...
-OPENWA_SESSION_ID=...
-OPENWA_CA_FILE=                           # a private CA's bundle, if OpenWA's certificate needs one
-OPENWA_TEST_NUMBER=+55...                 # your own number: it receives the test messages
-OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP=+55... # a number with no WhatsApp account
+cp .env.test.example .env.test.local
+OPENWA_RECORD=true VCR_RECORD_MODE=all bundle exec rspec spec/noticed/openwa/client_spec.rb
 ```
 
-The URL (scheme, host and port), the key, the session and both numbers (with and without the ninth digit) are replaced
-by placeholders in the cassettes, the `Host` header isn't kept, and replayed with the placeholders of `spec/spec_helper.rb`. The "not on WhatsApp" spec checks the
-number first and stops before sending if it is on WhatsApp: a real account would receive the message. Check a new
-cassette for those values before committing it.
+| Variable | |
+|---|---|
+| `OPENWA_URL`, `OPENWA_API_KEY`, `OPENWA_SESSION_ID` | The local OpenWA above, its key and a paired session |
+| `OPENWA_CA_FILE` | A private CA's bundle, if OpenWA's certificate needs one |
+| `OPENWA_TEST_NUMBER` | Your own number: it receives the test messages |
+| `OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP` | A number with no WhatsApp account |
+| `OPENWA_TEST_WEBHOOK_URL` | A public URL you control: the webhook specs register it |
+| `OPENWA_WEBHOOK_SECRET` | Optional: the webhook specs' secret (16 characters or more) |
+
+A value is the rest of its line (no inline comments), and an empty one is the same as leaving it out.
+
+The URL (scheme, host and port), the key, the session, the webhook's URL and secret and both numbers (with and
+without the ninth digit) are replaced by placeholders in the cassettes, the `Host` header isn't kept, and replayed with
+the placeholders of `spec/spec_helper.rb`. The "not on WhatsApp" spec checks the number first and stops before sending
+if it is on WhatsApp: a real account would receive the message. Check a new cassette for those values before
+committing it.
+
+The webhook specs register `OPENWA_TEST_WEBHOOK_URL` on the session (OpenWA refuses a URL that doesn't resolve to a
+public address): the session's events are delivered there while it exists. Each spec unregisters it before it ends,
+so none is left on the session.
 
 `spec/fixtures/vcr_cassettes/templates/send_text.yml` is an ERB template of a recorded send, for the answers a real
 session can't be made to give (`409`, `429`, `503`); use it with `record: :none`.
