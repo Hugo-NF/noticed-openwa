@@ -61,6 +61,19 @@ module OpenwaSpecSupport
 
   def webhook_secret = ENV.fetch("OPENWA_WEBHOOK_SECRET")
 
+  # script/webhook_fixtures.rb signs the webhook fixtures (spec/fixtures/webhooks/) with it.
+  WEBHOOK_FIXTURE_SECRET = "noticed-openwa-webhook-fixtures"
+
+  # A webhook fixture's raw body and headers, as a delivery reaches the app.
+  def webhook_delivery(name)
+    fixture = JSON.parse(File.read(File.expand_path("fixtures/webhooks/#{name}.json", __dir__)))
+    [ fixture.fetch("body"), fixture.fetch("headers") ]
+  end
+
+  def webhook_fixtures
+    Dir[File.expand_path("fixtures/webhooks/*.json", __dir__)].map { File.basename(_1, ".json") }.sort
+  end
+
   def idempotency_key = "noticed-openwa-spec-#{SecureRandom.uuid}"
 end
 
@@ -75,8 +88,8 @@ VCR.configure do |config|
   config.ignore_hosts "127.0.0.1"
   config.default_cassette_options = { record: record_mode }
 
-  # The settings, the webhook's URL and secret and the numbers never go into a cassette; replayed, they're the environment's values (the placeholders
-  # above). The placeholders are valid in a URI, and none is a prefix of another.
+  # The settings, the webhook's URL and secret and the numbers never go into a cassette; replayed, they're the
+  # environment's values (the placeholders above). The placeholders are valid in a URI, and none is a prefix of another.
   {
     "https://openwa-host.placeholder" => -> { ENV["OPENWA_URL"].to_s[%r{\A[a-z]+://[^/]+}] },
     "openwa-api-key-placeholder" => -> { ENV["OPENWA_API_KEY"] },

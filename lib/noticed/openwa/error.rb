@@ -31,5 +31,8 @@ module Noticed
 
     # OpenWA refused the request itself (an invalid number, file or body).
     class RequestError < Error; end
+
+    # A webhook delivery whose `X-OpenWA-Signature` is missing, malformed or not the body's: don't trust it.
+    class InvalidSignatureError < Error; end
   end
 end

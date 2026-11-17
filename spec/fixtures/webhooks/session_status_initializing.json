@@ -1,0 +1,13 @@
+{
+  "note": "A real delivery, filtered and signed again with the specs' secret.",
+  "headers": {
+    "Content-Type": "application/json",
+    "User-Agent": "OpenWA-Webhook/1.0.0",
+    "X-OpenWA-Event": "session.status",
+    "X-OpenWA-Idempotency-Key": "sess_openwa-session-test_initializing_50e2180e-6972-4fde-b0ec-726bbb1648fe_4738e3b8-8b8f-4c7a-a5c5-0e21699a3aef",
+    "X-OpenWA-Delivery-Id": "dlv_80e4e285-c284-4ee8-bd8e-c185e92fabcf",
+    "X-OpenWA-Retry-Count": "0",
+    "X-OpenWA-Signature": "sha256=e4b6fe77387e61c7408c649ba844d343433b2a1e7b057179b5b503cd7ad66b12"
+  },
+  "body": "{\"event\":\"session.status\",\"timestamp\":\"2026-11-17T21:02:42.857Z\",\"sessionId\":\"openwa-session-test\",\"idempotencyKey\":\"sess_openwa-session-test_initializing_50e2180e-6972-4fde-b0ec-726bbb1648fe_4738e3b8-8b8f-4c7a-a5c5-0e21699a3aef\",\"deliveryId\":\"dlv_80e4e285-c284-4ee8-bd8e-c185e92fabcf\",\"data\":{\"sessionId\":\"openwa-session-test\",\"status\":\"initializing\"}}"
+}
