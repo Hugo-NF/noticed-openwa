@@ -287,8 +287,9 @@ Published by `.github/workflows/release.yml`; versions come from the tags (`scri
   a minor label → `0.2.0.rc2`); a series left behind is never released. The first ever is `0.1.0.rc1`.
 - **Releases.** Untick "Set as a pre-release" on the latest candidate's GitHub release: the workflow publishes `X.Y.Z`
   from that candidate's commit to RubyGems, tags it `vX.Y.Z` with a release whose notes hold every change since the
-  previous release (all its candidates'), and ticks the candidate back as a pre-release. A candidate that can't be
-  released (not the latest of its series, or its version already released) is ticked back, and the run fails with why.
+  previous release (all its candidates'), and ticks the candidate back as a pre-release. The first release has no
+  previous one: its notes list every pull request merged since the beginning. A candidate that can't be released (not
+  the latest of its series, or its version already released) is ticked back, and the run fails with why.
 
 Candidates are pre-releases on RubyGems: `gem install noticed-openwa --pre`, or name one in a Gemfile
 (`gem "noticed-openwa", "0.1.0.rc1"`). A version can't be replaced: a mistake ships as the next candidate.
