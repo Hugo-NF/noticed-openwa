@@ -1,7 +1,7 @@
 name: CI
 
 # A push to main that passes CI publishes a release candidate (release.yml). Changes to docs, to the issue and PR
-# templates and to the local OpenWA (docker-compose.yml) publish none.
+# templates and the local OpenWA (docker-compose.yml) publish none.
 on:
   push:
     branches: [ main ]
@@ -10,6 +10,10 @@ on:
       - ".github/ISSUE_TEMPLATE/**"
       - "docker-compose.yml"
   pull_request:
+  # Weekly, before Dependabot's updates (Mondays 07:00 America/Sao_Paulo): the audit finds advisories published since the
+  # last change. A scheduled run publishes nothing (release.yml reacts to pushes only).
+  schedule:
+    - cron: "0 9 * * 1" # Mondays, 09:00 UTC
 
 permissions:
   contents: read
@@ -22,7 +26,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0"
@@ -36,7 +40,7 @@ jobs:
       matrix:
         ruby: [ "3.3", "3.4", "4.0" ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -45,3 +49,23 @@ jobs:
       - run: bundle exec rspec
         env:
           VCR_RECORD_MODE: none
+
+  # Advisories in the development bundle (Gemfile.lock); the runtime dependency (noticed) is in it too.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+      - run: bundle exec bundler-audit check --update
+
+  # The workflows, their shell steps included (the image runs shellcheck on each `run:`).
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color

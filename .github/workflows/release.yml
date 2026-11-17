@@ -39,7 +39,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.SHA }}
           fetch-depth: 0
@@ -56,15 +56,17 @@ jobs:
             version=${existing#v}
           else
             labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" --jq '[.[].labels[].name] | join(" ")')
-            bump=patch
+            bump="patch"
             case " $labels " in
-              *" release:major "*) bump=major ;;
-              *" release:minor "*) bump=minor ;;
+              *" release:major "*) bump="major" ;;
+              *" release:minor "*) bump="minor" ;;
             esac
             version=$(git tag --list 'v*' | ruby script/release_version.rb next_rc "$bump")
           fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$version"
+            echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: ./.github/actions/rubygems-credentials
         with:
@@ -98,7 +100,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       CANDIDATE: ${{ github.event.release.tag_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
@@ -120,9 +122,11 @@ jobs:
             echo "::error::$CANDIDATE can't be released: $version. It's a pre-release again."
             exit 1
           fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")" >> "$GITHUB_OUTPUT"
-          echo "sha=$(git rev-list -n 1 "$CANDIDATE")" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$version"
+            echo "notes_start=$(git tag --list 'v*' | ruby script/release_version.rb notes_start "$version")"
+            echo "sha=$(git rev-list -n 1 "$CANDIDATE")"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: ./.github/actions/rubygems-credentials
         if: steps.version.outputs.skip != 'true'

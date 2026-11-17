@@ -4,6 +4,7 @@ source "https://rubygems.org"
 
 gemspec
 
+gem "bundler-audit", require: false
 gem "rails", ">= 7.1"
 gem "rake", "~> 13.0"
 gem "rspec", "~> 3.13"
