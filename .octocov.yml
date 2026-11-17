@@ -1,0 +1,22 @@
+# octocov (ci.yml's coverage job): the specs' coverage of lib/, from the Ruby 4.0 run's SimpleCov report.
+coverage:
+  if: true
+  # The lowest coverage measured when it was introduced (97.78%), rounded down: a PR that lowers it below fails.
+  acceptable: current >= 97%
+testExecutionTime:
+  if: true
+  # The matrix's specs steps (ci.yml), merged: overlapping times count once.
+  steps:
+    - Run the specs
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+comment:
+  if: is_pull_request
+  hideFooterLink: true
+summary:
+  if: true
+report:
+  if: is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
