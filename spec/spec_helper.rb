@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-# A real OpenWA session's values, to record cassettes (README, "Recording the cassettes"): KEY=VALUE lines.
+# A real OpenWA session's values, read only to record cassettes (OPENWA_RECORD=true; README, "Recording the
+# cassettes"): KEY=VALUE lines. Otherwise the specs replay with the placeholders below, whatever the local file says.
 local_env = File.expand_path("../.env.test.local", __dir__)
-if File.exist?(local_env)
+if ENV["OPENWA_RECORD"] == "true" && File.exist?(local_env)
   File.readlines(local_env, chomp: true).each do |line|
     key, value = line.split("=", 2)
     ENV[key] ||= value if value && key.match?(/\A[A-Z][A-Z0-9_]*\z/)
@@ -61,13 +62,15 @@ VCR.configure do |config|
   config.hook_into :webmock
   config.cassette_library_dir = File.expand_path("fixtures/vcr_cassettes", __dir__)
   config.configure_rspec_metadata!
-  config.ignore_localhost = true
+  # A local OpenWA (docker-compose.yml) is on localhost: it's recorded like any other. Only 127.0.0.1 passes through, for
+  # the spec of an OpenWA that can't be reached.
+  config.ignore_hosts "127.0.0.1"
   config.default_cassette_options = { record: record_mode }
 
   # The settings and the numbers never go into a cassette; replayed, they're the environment's values (the placeholders
   # above). The placeholders are valid in a URI, and none is a prefix of another.
   {
-    "openwa-host.placeholder" => -> { URI(ENV["OPENWA_URL"].to_s).host },
+    "https://openwa-host.placeholder" => -> { ENV["OPENWA_URL"].to_s[%r{\A[a-z]+://[^/]+}] },
     "openwa-api-key-placeholder" => -> { ENV["OPENWA_API_KEY"] },
     "openwa-session-placeholder" => -> { ENV["OPENWA_SESSION_ID"] },
     "openwa-number-a" => -> { OpenwaSpecSupport.digits(ENV["OPENWA_TEST_NUMBER"]) },
@@ -77,6 +80,9 @@ VCR.configure do |config|
   }.each do |placeholder, value|
     config.filter_sensitive_data(placeholder) { value.call.to_s.then { |text| text.empty? ? nil : text } }
   end
+
+  # The Host header names OpenWA's host: it isn't matched on, so it isn't kept.
+  config.before_record { |interaction| interaction.request.headers.delete("Host") }
 end
 
 RSpec.configure do |config|

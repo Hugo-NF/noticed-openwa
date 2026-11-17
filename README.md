@@ -91,13 +91,27 @@ bundle exec rake          # RuboCop and the specs
 The specs replay VCR cassettes (`spec/fixtures/vcr_cassettes/`) recorded against a real, paired OpenWA session; noticed
 runs in a minimal Rails app (`spec/support/dummy_app.rb`). No request reaches OpenWA unless a cassette is missing.
 
-### Recording the cassettes
+### A local OpenWA
 
-Put a real session's values in the git-ignored `.env.test.local`, then delete the cassette (or run with
-`VCR_RECORD_MODE=all`) and run its spec:
+`docker-compose.yml` runs OpenWA (the version above) with its own Postgres, nothing else:
 
 ```
-OPENWA_URL=https://openwa.example
+docker compose up -d
+docker compose exec openwa cat /app/data/.api-key    # its API key, generated on the first start
+```
+
+Open `http://localhost:2785`, sign in with the key, create a session and pair it with a phone's WhatsApp (Linked
+devices: scan the QR code); its status turns `ready`. `docker compose down` stops it and keeps the session (its volumes);
+`docker compose down -v` forgets it.
+
+### Recording the cassettes
+
+Put the session's values in the git-ignored `.env.test.local`, then delete the cassette (or set
+`VCR_RECORD_MODE=all`) and run its spec with `OPENWA_RECORD=true`, which reads that file (without it, the specs always
+replay with the placeholders):
+
+```
+OPENWA_URL=http://localhost:2785          # the local OpenWA above
 OPENWA_API_KEY=...
 OPENWA_SESSION_ID=...
 OPENWA_CA_FILE=                           # a private CA's bundle, if OpenWA's certificate needs one
@@ -105,8 +119,8 @@ OPENWA_TEST_NUMBER=+55...                 # your own number: it receives the tes
 OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP=+55... # a number with no WhatsApp account
 ```
 
-The URL's host, the key, the session and both numbers (with and without the ninth digit) are replaced by placeholders
-in the cassettes, and replayed with the placeholders of `spec/spec_helper.rb`. The "not on WhatsApp" spec checks the
+The URL (scheme, host and port), the key, the session and both numbers (with and without the ninth digit) are replaced
+by placeholders in the cassettes, the `Host` header isn't kept, and replayed with the placeholders of `spec/spec_helper.rb`. The "not on WhatsApp" spec checks the
 number first and stops before sending if it is on WhatsApp: a real account would receive the message. Check a new
 cassette for those values before committing it.
 
