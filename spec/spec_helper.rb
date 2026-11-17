@@ -6,6 +6,8 @@ local_env = File.expand_path("../.env.test.local", __dir__)
 if ENV["OPENWA_RECORD"] == "true" && File.exist?(local_env)
   File.readlines(local_env, chomp: true).each do |line|
     key, value = line.split("=", 2)
+    # A value may be quoted, as in other .env files: one pair of matching quotes around it isn't part of it.
+    value = value[1..-2] if value&.match?(/\A(["']).*\1\z/)
     # An empty value (.env.test.example's) is left out: the placeholder's default applies.
     ENV[key] ||= value unless value.to_s.empty? || !key.match?(/\A[A-Z][A-Z0-9_]*\z/)
   end
@@ -19,7 +21,9 @@ end
   "OPENWA_TEST_NUMBER" => "+5561900000001",
   "OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP" => "+5561900000002",
   "OPENWA_WEBHOOK_SECRET" => "openwa_webhook_secret_1234567890",
-  "OPENWA_TEST_WEBHOOK_URL" => "https://webhook.test/noticed-openwa"
+  "OPENWA_TEST_WEBHOOK_URL" => "https://webhook.test/noticed-openwa",
+  "OPENWA_SESSION_PHONE" => "5561900000003",
+  "OPENWA_SESSION_PUSH_NAME" => "noticed-openwa test"
 }.each { |key, value| ENV[key] = value if ENV[key].to_s.empty? }
 
 require_relative "support/dummy_app"
@@ -88,14 +92,17 @@ VCR.configure do |config|
   config.ignore_hosts "127.0.0.1"
   config.default_cassette_options = { record: record_mode }
 
-  # The settings, the webhook's URL and secret and the numbers never go into a cassette; replayed, they're the
-  # environment's values (the placeholders above). The placeholders are valid in a URI, and none is a prefix of another.
+  # The settings, the webhook's URL and secret, the numbers and the session's phone and name never go into a cassette;
+  # replayed, they're the environment's values (the placeholders above). The placeholders are valid in a URI, and none
+  # is a prefix of another.
   {
     "https://openwa-host.placeholder" => -> { ENV["OPENWA_URL"].to_s[%r{\A[a-z]+://[^/]+}] },
     "openwa-api-key-placeholder" => -> { ENV["OPENWA_API_KEY"] },
     "openwa-session-placeholder" => -> { ENV["OPENWA_SESSION_ID"] },
     "openwa-webhook-secret-placeholder" => -> { ENV["OPENWA_WEBHOOK_SECRET"] },
     "https://openwa-webhook-url.placeholder" => -> { ENV["OPENWA_TEST_WEBHOOK_URL"] },
+    "openwa-session-phone" => -> { OpenwaSpecSupport.digits(ENV["OPENWA_SESSION_PHONE"]) },
+    "openwa-push-name" => -> { ENV["OPENWA_SESSION_PUSH_NAME"] },
     "openwa-number-a" => -> { OpenwaSpecSupport.digits(ENV["OPENWA_TEST_NUMBER"]) },
     "openwa-whatsapp-id-a" => -> { OpenwaSpecSupport.without_ninth_digit(ENV["OPENWA_TEST_NUMBER"]) },
     "openwa-number-b" => -> { OpenwaSpecSupport.digits(ENV["OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP"]) },
