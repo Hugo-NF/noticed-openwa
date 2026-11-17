@@ -94,6 +94,9 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - Supported Rubies: 3.3 and up. A change to them changes, together: the gemspec's `required_ruby_version`, the
   `specs` matrix in `ci.yml` (its oldest entry is the gemspec's minimum), `.rubocop.yml`'s `TargetRubyVersion` (the
   minimum), and the newest Ruby the other jobs use (`lint`, `audit`, `release.yml`'s); the README states the minimum.
+- The README's badges: the gem's version and downloads and CI's status update by themselves; the license, Ruby, noticed
+  and OpenWA badges are static text, changed with what they state (the gemspec's license, `required_ruby_version`, the
+  noticed range, the "OpenWA versions" table).
 - The delivery method's options are evaluated on each delivery (a value, a lambda or a method name, through
   `evaluate_option`). A new option or default stays that way: never a value computed when the class loads (a time, an
   `ENV` read, a locale), which would keep the moment the class was loaded.
@@ -169,7 +172,7 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - Link "blocked by" / "blocks" relationships: `gh api repos/Hugo-NF/noticed-openwa/issues/<n>/dependencies/blocked_by
   -F issue_id=<id>`, where `<id>` is the blocking issue's `id` (`gh api repos/<owner>/<repo>/issues/<number> --jq
   .id`), not its number. Issues of other repositories can be linked the same way.
-- Issues, PRs and commits name no app that uses the gem: they're about OpenWA and noticed (the repository becomes
+- Issues, PRs and commits name no app that uses the gem: they're about OpenWA and noticed (the repository is
   public). An app's issue may reference this repository's; not the other way around.
 - Before implementing, list the open decisions and confirm them with the maintainer. Record the confirmed decisions
   as a comment on the issue.
