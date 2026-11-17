@@ -18,7 +18,8 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 ## Scope
 
 - Only what a delivery needs: sending a text, an image and a document to a chat, checking a number is on WhatsApp,
-  registering, listing and unregistering the session's own webhook (by its URL), and their errors. No sessions, groups,
+  registering, listing and unregistering the session's own webhook (by its URL), verifying and parsing its deliveries
+  into events (no state: the app keeps routes, jobs and persistence), and their errors. No sessions, groups,
   chats, contacts, the rest of OpenWA's webhook administration (deleting others' webhooks, testing, delivery failures,
   redrives) or anything else of OpenWA's API.
 - No reference to an app: no models, `Rails.application`, routes or templates. The app passes values or lambdas as the
@@ -30,12 +31,16 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 
 - `lib/noticed/openwa/client.rb`: `Noticed::Openwa::Client`, the HTTP calls (`X-API-Key`, `Idempotency-Key` on every
   send, files as base64, never by URL, the session's webhook registered and unregistered by its URL).
+- `lib/noticed/openwa/webhook.rb`: `Noticed::Openwa::Webhook`, verifying (`X-OpenWA-Signature`) and parsing a
+  delivery into an `Event` (`Data`), or nil for an event it doesn't handle.
 - `lib/noticed/openwa/error.rb`: the errors. The base `Error` (status, OpenWA's `code`, `retry_after`) has a body; the
   one-line subclasses stay beside it. A new error with a body goes in its own file.
 - `lib/noticed/delivery_methods/openwa.rb`: `Noticed::DeliveryMethods::Openwa` (`deliver_by :openwa`), loaded on first
   use (an autoload in `lib/noticed/openwa.rb`): it's an Active Job and needs the app's jobs.
 - `spec/support/dummy_app.rb`: the minimal Rails app noticed needs in the specs.
 - `script/release_version.rb`: the release versions, from the tags; `.github/workflows/release.yml` publishes them.
+- `script/webhook_fixtures.rb`: turns real deliveries (the requests the webhook's URL received) into
+  `spec/fixtures/webhooks/`.
 
 ## Errors
 
@@ -46,6 +51,7 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 | `RetryableError` | Nothing was sent: a session not started (`400`) or not ready (`409`), `IDEMPOTENCY_KEY_IN_PROGRESS`, `408`, `429`, `5xx`, a network error |
 | `UnknownOutcomeError` | `409 IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent |
 | `RequestError` | Any other refusal |
+| `InvalidSignatureError` | A webhook delivery whose `X-OpenWA-Signature` is missing, malformed or not the body's |
 
 - Error messages name the call, the status, OpenWA's code and reason, with phone numbers filtered out (`NUMBER`).
   Never put a request's body, a number, a text or a key in a message or a log: apps send errors to their trackers.
@@ -73,6 +79,10 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - For answers a real session can't give (`409`, `429`, `503`), use the ERB template of a real cassette
   (`templates/send_text.yml`, its placeholders at the top) with `erb:` and `record: :none`. Never edit a recorded
   interaction by hand.
+- Webhook deliveries are fixtures in `spec/fixtures/webhooks/` (JSON: `note`, `headers`, `body`), made by
+  `script/webhook_fixtures.rb` from real deliveries (the README's "Recording the webhook fixtures"): filtered, and
+  signed again with the specs' secret. Never write or edit one by hand; a delivery a recording can't trigger is built
+  in its spec, from OpenWA's code, and says so.
 - The action under test is the `subject`; `aggregate_failures` for several expectations; one action per example.
 
 ## Code style
@@ -92,7 +102,8 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - Automated (the README's "Releases", `.github/workflows/release.yml`): every push to `main` that passes CI publishes a
   release candidate (`X.Y.Z.rcN`) to RubyGems and as a GitHub pre-release; the maintainer unticking "Set as a
   pre-release" on the latest candidate publishes `X.Y.Z` from its commit. A PR's `release:minor` / `release:major` label
-  starts the next minor or major series; otherwise a release is followed by the next patch's candidates.
+  starts the next minor or major series from the open one, released or not, unless the open series already is one;
+  otherwise a release is followed by the next patch's candidates.
 - Versions come from the tags (`script/release_version.rb`, with its specs). Never bump
   `lib/noticed/openwa/version.rb` (a placeholder the workflow fills), create a `v*` tag or release, or `gem push` by
   hand. There's no CHANGELOG: each release's notes are GitHub's, generated from the PRs, and a release's hold all its

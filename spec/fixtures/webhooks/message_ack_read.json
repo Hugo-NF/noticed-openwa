@@ -1,0 +1,13 @@
+{
+  "note": "A real delivery, filtered and signed again with the specs' secret.",
+  "headers": {
+    "Content-Type": "application/json",
+    "User-Agent": "OpenWA-Webhook/1.0.0",
+    "X-OpenWA-Event": "message.ack",
+    "X-OpenWA-Idempotency-Key": "ack_openwa-session-test_true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out_read_4738e3b8-8b8f-4c7a-a5c5-0e21699a3aef",
+    "X-OpenWA-Delivery-Id": "dlv_8f976256-dc00-49d6-962e-0699a44b447b",
+    "X-OpenWA-Retry-Count": "0",
+    "X-OpenWA-Signature": "sha256=b1df4005c2785bf113e9a85ee1c8f9114d752ef5d640415230d700f2db304c81"
+  },
+  "body": "{\"event\":\"message.ack\",\"timestamp\":\"2026-11-17T21:01:42.724Z\",\"sessionId\":\"openwa-session-test\",\"idempotencyKey\":\"ack_openwa-session-test_true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out_read_4738e3b8-8b8f-4c7a-a5c5-0e21699a3aef\",\"deliveryId\":\"dlv_8f976256-dc00-49d6-962e-0699a44b447b\",\"data\":{\"id\":\"true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out\",\"messageId\":\"true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out\",\"status\":\"read\",\"ack\":3,\"chatId\":\"100000000000001@lid\"}}"
+}

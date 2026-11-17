@@ -1,0 +1,13 @@
+{
+  "note": "Made from the recorded read ack (a recording can't trigger it on demand), signed with the specs' secret.",
+  "headers": {
+    "Content-Type": "application/json",
+    "User-Agent": "OpenWA-Webhook/1.0.0",
+    "X-OpenWA-Event": "message.ack",
+    "X-OpenWA-Idempotency-Key": "ack_openwa-session-test_true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out_sent_4738e3b8-8b8f-4c7a-a5c5-0e21699a3aef",
+    "X-OpenWA-Delivery-Id": "dlv_8f976256-dc00-49d6-962e-0699a44b447b",
+    "X-OpenWA-Retry-Count": "0",
+    "X-OpenWA-Signature": "sha256=6763814ff17d3385cf69a5d268b618e47ff470429f958320da09122a7c2230df"
+  },
+  "body": "{\"event\":\"message.ack\",\"timestamp\":\"2026-11-17T21:01:42.724Z\",\"sessionId\":\"openwa-session-test\",\"idempotencyKey\":\"ack_openwa-session-test_true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out_sent_4738e3b8-8b8f-4c7a-a5c5-0e21699a3aef\",\"deliveryId\":\"dlv_8f976256-dc00-49d6-962e-0699a44b447b\",\"data\":{\"id\":\"true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out\",\"messageId\":\"true_100000000000001@lid_3EB09F3F44E302C0AC7D78_out\",\"status\":\"sent\",\"ack\":1,\"chatId\":\"100000000000001@lid\"}}"
+}
