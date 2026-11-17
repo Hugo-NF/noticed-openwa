@@ -1,0 +1,51 @@
+# Weekly version updates, after the Monday scan (ci.yml's schedule): minor and patch updates grouped, each major in its
+# own PR. Security updates don't join the groups (`applies-to` defaults to `version-updates`) and open at once.
+version: 2
+updates:
+  # The development bundle (Gemfile.lock). The gem's own dependency range (the gemspec's noticed) is changed by hand.
+  - package-ecosystem: bundler
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: America/Sao_Paulo
+    labels:
+      - dependencies
+      - ruby
+    groups:
+      bundle:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: America/Sao_Paulo
+    labels:
+      - dependencies
+      - github_actions
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # The local OpenWA and its Postgres (docker-compose.yml). A new OpenWA is checked against the gem first: the README's
+  # "written against" version, the specs, and the cassettes re-recorded where its API changed (CLAUDE.md, "Local OpenWA").
+  - package-ecosystem: docker-compose
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: America/Sao_Paulo
+    labels:
+      - dependencies
+    ignore:
+      - dependency-name: "postgres"
+        update-types:
+          - version-update:semver-major
