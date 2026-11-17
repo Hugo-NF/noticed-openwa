@@ -134,6 +134,10 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   weekly (Mondays, 09:00 UTC): `lint` (RuboCop), `specs` (each supported Ruby, replaying the cassettes), `audit`
   (bundler-audit on `Gemfile.lock`) and `actionlint` (the workflows, shellcheck on each `run:` included). A push to
   `main` that passes it publishes a release candidate; a scheduled run publishes nothing.
+- `coverage` (octocov, `.octocov.yml`, not on the weekly run) reports the Ruby 4.0 run's SimpleCov coverage of `lib/`
+  (`.simplecov`) and the specs' execution time: a comment on pull requests with the diff against `main`, and `main`'s
+  report as an artifact. Below the threshold (`acceptable`, 97%: the lowest coverage measured when it was introduced,
+  rounded down) it fails; never lower it to let a PR pass.
 - Actions are on major tags (a version where an action has none), kept current by Dependabot
   (`.github/dependabot.yml`): weekly, Mondays 07:00 `America/Sao_Paulo`, the bundle's and the actions' minor and patch
   updates grouped, each major in its own PR, and the compose file's images. Security updates open at once.

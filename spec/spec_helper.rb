@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# Before anything of the gem is loaded, or its files aren't measured (configured in .simplecov).
+require "simplecov"
+SimpleCov.start
+
 # A real OpenWA session's values, read only to record cassettes (OPENWA_RECORD=true; README, "Recording the
 # cassettes"): KEY=VALUE lines. Otherwise the specs replay with the placeholders below, whatever the local file says.
 local_env = File.expand_path("../.env.test.local", __dir__)

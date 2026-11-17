@@ -202,6 +202,10 @@ bundle exec rake          # RuboCop and the specs
 The specs replay VCR cassettes (`spec/fixtures/vcr_cassettes/`) recorded against a real, paired OpenWA session; noticed
 runs in a minimal Rails app (`spec/support/dummy_app.rb`). No request reaches OpenWA unless a cassette is missing.
 
+SimpleCov (`.simplecov`) measures the specs' coverage of `lib/` and writes `coverage/index.html`. In CI, octocov
+(`.octocov.yml`) reports the Ruby 4.0 run's coverage and the specs' execution time: on a pull request, as a comment
+with the diff against `main`; below 97% the `coverage` job fails.
+
 ### A local OpenWA
 
 `docker-compose.yml` runs OpenWA (the version above) with its own Postgres, nothing else:

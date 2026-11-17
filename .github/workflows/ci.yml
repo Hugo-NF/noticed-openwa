@@ -45,10 +45,43 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      # Replays the cassettes only: a missing one fails instead of reaching OpenWA.
-      - run: bundle exec rspec
+      # Replays the cassettes only: a missing one fails instead of reaching OpenWA. .octocov.yml measures the test
+      # execution time from the steps with this name, across the matrix.
+      - name: Run the specs
+        run: bundle exec rspec
         env:
           VCR_RECORD_MODE: none
+      # The code is the same on every Ruby: one run's coverage is the gem's.
+      - name: Upload coverage
+        if: matrix.ruby == '4.0'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            coverage/.resultset.json
+            coverage/coverage.json
+          include-hidden-files: true
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  # octocov (.octocov.yml): on a pull request, a comment with the coverage, its diff against main's and the test
+  # execution time; on main, the report pull requests diff against. A coverage below the threshold fails it.
+  coverage:
+    needs: specs
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: coverage
+          path: coverage
+      - uses: k1LoW/octocov-action@v1
 
   # Advisories in the development bundle (Gemfile.lock); the runtime dependency (noticed) is in it too.
   audit:
