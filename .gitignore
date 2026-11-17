@@ -1,0 +1,9 @@
+/.bundle/
+/pkg/
+/tmp/
+/coverage/
+*.gem
+# A real OpenWA session's values, to record cassettes (README, "Recording the cassettes")
+/.env.test.local
+# JetBrains IDEs
+/.idea/
