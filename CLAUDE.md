@@ -57,6 +57,8 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   `stub_request`; assert on requests with `a_request(...)` and `have_been_made`.
 - Ask the maintainer before recording a call that has no cassette yet: they record new cassettes themselves, with their
   own session (`.env.test.local`, git-ignored; the README's "Recording the cassettes").
+- Every variable the specs read (`OPENWA_*`) is listed in the README's recording block and has a placeholder in
+  `spec/spec_helper.rb` (its default, and its filter when it's a value to keep out of cassettes).
 - Never send to a number that isn't the maintainer's: `OPENWA_TEST_NUMBER` is theirs. A spec about a number not on
   WhatsApp checks it first and stops before sending if it is (a real account would receive the message).
 - `spec/spec_helper.rb` replaces the URL (scheme, host and port), the key, the session and both numbers (with and
@@ -75,7 +77,12 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - RuboCop (`rubocop-rails-omakase`, `rubocop-rspec`), 120 characters per line.
 - Guard clauses with a blank line after. `&.` over explicit nil checks.
 - Comments say why, not what; no issue references (`#123`) in comments.
-- Supported Rubies: 3.3 and up (`required_ruby_version`, CI's matrix).
+- Supported Rubies: 3.3 and up. A change to them changes, together: the gemspec's `required_ruby_version`, the
+  `specs` matrix in `ci.yml` (its oldest entry is the gemspec's minimum), `.rubocop.yml`'s `TargetRubyVersion` (the
+  minimum), and the newest Ruby the other jobs use (`lint`, `audit`, `release.yml`'s); the README states the minimum.
+- The delivery method's options are evaluated on each delivery (a value, a lambda or a method name, through
+  `evaluate_option`). A new option or default stays that way: never a value computed when the class loads (a time, an
+  `ENV` read, a locale), which would keep the moment the class was loaded.
 
 ## Releases
 
@@ -87,13 +94,87 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   `lib/noticed/openwa/version.rb` (a placeholder the workflow fills), create a `v*` tag or release, or `gem push` by
   hand. There's no CHANGELOG: each release's notes are GitHub's, generated from the PRs, and a release's hold all its
   candidates'.
+- Tags are never moved or recreated, and a version on RubyGems can't be replaced: a wrong candidate or release ships as
+  the next one (`gem yank` only hides a version).
 - RubyGems trusts the release workflow (trusted publishing, no API key): renaming `release.yml` breaks publishing until
   the trusted publisher on rubygems.org is updated. `.github/actions/rubygems-credentials` exchanges its OIDC token,
   naming the owning account (`RUBYGEMS_OWNER`, its immutable ID), which a pending trusted publisher requires.
 
+## Local OpenWA
+
+- `docker-compose.yml` runs the OpenWA the gem is written against (the README's version), with its own Postgres, on
+  `http://localhost:2785`. Every image is pinned to a version and every service has a memory limit; a new service gets
+  both, and every secret is a local-only default.
+- A new OpenWA version (Dependabot's PR, or by hand) changes, together: the compose file's image, the README's
+  "written against" version, and the cassettes of every call whose request or answer changed (re-recorded by the
+  maintainer). The specs replaying the old cassettes passing doesn't prove the new version answers the same.
+
+## CI and dependencies
+
+- `ci.yml` runs on pull requests, on pushes to `main` (docs, the issue templates and `docker-compose.yml` aside) and
+  weekly (Mondays, 09:00 UTC): `lint` (RuboCop), `specs` (each supported Ruby, replaying the cassettes), `audit`
+  (bundler-audit on `Gemfile.lock`) and `actionlint` (the workflows, shellcheck on each `run:` included). A push to
+  `main` that passes it publishes a release candidate; a scheduled run publishes nothing.
+- Actions are on major tags (a version where an action has none), kept current by Dependabot
+  (`.github/dependabot.yml`): weekly, Mondays 07:00 `America/Sao_Paulo`, the bundle's and the actions' minor and patch
+  updates grouped, each major in its own PR, and the compose file's images. Security updates open at once.
+- `main`'s ruleset requires CI's jobs as status checks (`specs` once per Ruby): a change to CI's jobs or to the
+  supported Rubies changes the ruleset's checks too (GitHub's settings, Rules).
+- The gemspec's dependency range (`noticed`) is changed by hand, with the specs run against the range's ends when it
+  widens.
+
 ## Commits and pull requests
 
-- Present tense, the subject at most 50 characters, a blank line, the body wrapped at 72.
+- Present tense, the subject at most 50 characters, a blank line, the body wrapped at 72. On an issue's branch, prefix
+  the subject with its scope and number, taken from the branch name (`feature/1: Register the session's webhook`).
 - A PR that should start a minor or major version gets the `release:minor` or `release:major` label before it's merged.
-- Run RuboCop and the specs before committing. Commit and push only when the maintainer asks; never force-push.
+- Run RuboCop and the specs before committing (`bundle exec rake`). Commit and push only when the maintainer asks;
+  never force-push.
 - Don't co-author commits, and add no AI note to commits or pull requests.
+- A push to `main` that changes the gem publishes a release candidate (see "Releases"). A commit that only changes
+  docs, the issue templates or `docker-compose.yml` publishes none; one that also touches other files without changing
+  the gem (a spec helper, CI) carries `[skip ci]` in its subject, when the maintainer agrees.
+
+## AI-assisted workflow
+
+### Issues
+
+- Use the templates in `.github/ISSUE_TEMPLATE/`. AI-written issues get the `ai-generated` label; add others as
+  appropriate (`enhancement`, `bug`, `documentation`, `question`).
+- Set every issue's type (Bug, Feature or Task; the templates pre-fill Bug or Feature): `gh issue create` can't, so
+  set it after creating the issue, `gh api -X PATCH repos/Hugo-NF/noticed-openwa/issues/<n> -f type=<type>`.
+- Link "blocked by" / "blocks" relationships: `gh api repos/Hugo-NF/noticed-openwa/issues/<n>/dependencies/blocked_by
+  -F issue_id=<id>`, where `<id>` is the blocking issue's `id` (`gh api repos/<owner>/<repo>/issues/<number> --jq
+  .id`), not its number. Issues of other repositories can be linked the same way.
+- Issues, PRs and commits name no app that uses the gem: they're about OpenWA and noticed (the repository becomes
+  public). An app's issue may reference this repository's; not the other way around.
+- Before implementing, list the open decisions and confirm them with the maintainer. Record the confirmed decisions
+  as a comment on the issue.
+
+### Implementing an issue
+
+Work on one issue at a time.
+
+1. Assign the issue to the maintainer (`@me`) if it isn't already.
+2. Branch from `origin/main`, named after the issue (for example `feature/1_register_webhook`, `bugfix/4_...`).
+3. Commit and push only when the maintainer asks: they often review the working tree first. Never force-push. If a
+   push is blocked by a permission check, stop and tell the maintainer; don't work around it.
+4. A new OpenWA interaction needs a cassette: ask the maintainer, who records it against the local OpenWA (see
+   "Testing").
+5. Open the PR against `main` following `.github/pull_request_template.md`:
+   - title `[<issue number>] Description`, body with `Closes #<issue number>`
+   - the `ai-generated` label and **no other AI note anywhere** (no "Generated with Claude Code" footer, no session
+     links)
+   - other labels as appropriate, and `release:minor` / `release:major` when it starts a minor or major version
+   - assigned to the maintainer (`--assignee @me`)
+6. Don't merge: merging publishes a release candidate. The maintainer reviews and merges, or asks for corrections.
+
+### GitHub CLI
+
+- `gh issue view` and `gh pr edit` can fail on the Projects (classic) deprecation: use `--json` with `gh issue view`
+  and `gh api` REST calls for edits.
+
+### Answering questions
+
+- When the maintainer asks a clarifying question, answer it and stop. Don't propose new work or issues; the maintainer
+  asks to register an issue when needed.
