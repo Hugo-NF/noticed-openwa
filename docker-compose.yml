@@ -1,0 +1,46 @@
+# A local OpenWA to develop the gem and record its cassettes against (the README's "Development"). Its API and dashboard
+# are on http://localhost:2785; pairing a session needs a real phone. Every secret is a local-only default.
+name: noticed-openwa
+
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: openwa
+      POSTGRES_USER: openwa
+      POSTGRES_PASSWORD: local-only-openwa
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "openwa", "-d", "openwa" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    mem_limit: 256m
+
+  # The version the gem is written against (README). Its API key is generated on the first start:
+  #   docker compose exec openwa cat /app/data/.api-key
+  openwa:
+    image: ghcr.io/rmyndharis/openwa:0.30.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Development mode: production refuses local-only secrets, and turns off the API's docs.
+      NODE_ENV: development
+      PORT: "2785"
+      DATABASE_TYPE: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: openwa
+      DATABASE_USERNAME: openwa
+      DATABASE_PASSWORD: local-only-openwa
+    ports:
+      - 127.0.0.1:2785:2785
+    volumes:
+      - openwa-data:/app/data
+    mem_limit: 1g
+
+volumes:
+  postgres-data:
+  openwa-data:

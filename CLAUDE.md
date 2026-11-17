@@ -6,11 +6,12 @@ nothing of the apps that use it.
 ## Commands
 
 ```bash
+docker compose up -d                  # a local OpenWA on http://localhost:2785 (README, "A local OpenWA")
 bundle exec rake                      # RuboCop and the specs
 bundle exec rspec                     # the specs (replaying cassettes)
 bundle exec rspec spec/noticed/openwa/client_spec.rb
 bundle exec rubocop                   # lint; -A to auto-fix
-VCR_RECORD_MODE=all bundle exec rspec <spec>   # re-record (needs a real session, see "Testing")
+OPENWA_RECORD=true VCR_RECORD_MODE=all bundle exec rspec <spec>   # re-record (a real session, see "Testing")
 git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the next push to main publishes
 ```
 
@@ -58,9 +59,12 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   own session (`.env.test.local`, git-ignored; the README's "Recording the cassettes").
 - Never send to a number that isn't the maintainer's: `OPENWA_TEST_NUMBER` is theirs. A spec about a number not on
   WhatsApp checks it first and stops before sending if it is (a real account would receive the message).
-- `spec/spec_helper.rb` replaces the URL's host, the key, the session and both numbers (with and without the ninth
-  digit) with placeholders, valid in a URI and none a prefix of another, and replays them with its defaults. Check a new
-  cassette for real values before committing it.
+- `spec/spec_helper.rb` replaces the URL (scheme, host and port), the key, the session and both numbers (with and
+  without the ninth digit) with placeholders, valid in a URI and none a prefix of another, drops the `Host` header, and
+  replays them with its defaults. It reads `.env.test.local` only with `OPENWA_RECORD=true`. Check a new cassette for
+  real values before committing it.
+- Record against the local OpenWA (`docker-compose.yml`, `http://localhost:2785`, the README's "A local OpenWA"): VCR
+  records `localhost`; only `127.0.0.1` passes through.
 - For answers a real session can't give (`409`, `429`, `503`), use the ERB template of a real cassette
   (`templates/send_text.yml`, its placeholders at the top) with `erb:` and `record: :none`. Never edit a recorded
   interaction by hand.
