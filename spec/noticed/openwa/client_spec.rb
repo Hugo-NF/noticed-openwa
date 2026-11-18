@@ -14,8 +14,8 @@ RSpec.describe Noticed::Openwa::Client do
 
   describe ".chat_id" do
     it "turns a number into its chat id", :aggregate_failures do
-      expect(described_class.chat_id("+55 (61) 99110-1515")).to eq("5561991101515@c.us")
-      expect(described_class.chat_id("5561991101515@c.us")).to eq("5561991101515@c.us")
+      expect(described_class.chat_id("+55 (61) 90000-0001")).to eq("5561900000001@c.us")
+      expect(described_class.chat_id("5561900000001@c.us")).to eq("5561900000001@c.us")
     end
   end
 
