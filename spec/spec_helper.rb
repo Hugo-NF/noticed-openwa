@@ -76,6 +76,10 @@ module OpenwaSpecSupport
 
   def webhook_secret = ENV.fetch("OPENWA_WEBHOOK_SECRET")
 
+  # A WhatsApp privacy id's digits, before `@lid`, and what the cassettes and webhook fixtures hold instead.
+  LID = /\d{8,}(?=@lid)/
+  LID_PLACEHOLDER = "100000000000001"
+
   # script/webhook_fixtures.rb signs the webhook fixtures (spec/fixtures/webhooks/) with it.
   WEBHOOK_FIXTURE_SECRET = "noticed-openwa-webhook-fixtures"
 
@@ -125,6 +129,15 @@ VCR.configure do |config|
 
   # The Host header names OpenWA's host: it isn't matched on, so it isn't kept.
   config.before_record { |interaction| interaction.request.headers.delete("Host") }
+
+  # WhatsApp's privacy ids (LIDs, <digits>@lid) name accounts as numbers do, the maintainer's own included, and appear in
+  # the message ids OpenWA answers: whichever account they are, they're replaced, unlike the values above, by one
+  # placeholder (the specs never read them back).
+  config.before_record do |interaction|
+    [ interaction.request.uri, interaction.request.body, interaction.response.body ].each do |text|
+      text&.gsub!(OpenwaSpecSupport::LID, OpenwaSpecSupport::LID_PLACEHOLDER)
+    end
+  end
 end
 
 RSpec.configure do |config|
