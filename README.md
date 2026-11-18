@@ -58,7 +58,7 @@ end
 | `to` | Required: a phone number (punctuation and `+` are dropped) or a chat id (`<digits>@c.us`) |
 | `text` | Required: the message, WhatsApp's markup included |
 | `files` | `[{ filename:, mimetype:, content: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent |
-| `idempotency_key` | Defaults to `noticed-<notification id>` |
+| `idempotency_key` | Defaults to `noticed-<notification id>`; an ephemeral notifier has none: pass one so a retried job doesn't send twice |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
 
 Each option is a value, a lambda evaluated on the notification, or the name of a notifier method, as in noticed's own
@@ -69,6 +69,34 @@ Without files it sends the text. With files it sends one message per file, the t
 
 Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file): a retried job gets
 OpenWA's first answer replayed instead of sending again.
+
+### noticed's options
+
+noticed handles these for every delivery method, `:openwa` included
+([noticed's README](https://github.com/excid3/noticed#readme)):
+
+| Option | |
+|---|---|
+| `if`, `unless` | Skip the delivery when falsey (`if`) or truthy (`unless`), checked by the job when it runs |
+| `wait`, `wait_until`, `queue`, `priority` | The job's delay, time, queue and priority |
+| `before_enqueue` | `throw :abort` to not enqueue the job at all |
+| `class` | The name of a class to deliver with instead, such as a subclass of `Noticed::DeliveryMethods::Openwa` |
+
+Lambdas are evaluated on the notification. A notification has noticed's `t`, so a key starting with a period is looked
+up under `notifiers.<notifier>.notification`:
+
+```ruby
+class BookingConfirmedNotifier < Noticed::Event
+  deliver_by :openwa,
+             # url:, api_key:, session_id: and to: as above
+             text: -> { t(".message") }, # notifiers.booking_confirmed_notifier.notification.message
+             if: -> { recipient.whatsapp_opt_in? },
+             wait: 5.minutes,
+             queue: :notifications
+end
+```
+
+Ephemeral notifiers (`Noticed::Ephemeral`) deliver the same way, without saving anything: see `idempotency_key`.
 
 ## The client
 
