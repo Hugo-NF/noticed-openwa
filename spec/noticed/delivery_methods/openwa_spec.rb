@@ -21,6 +21,7 @@ RSpec.describe Noticed::DeliveryMethods::Openwa do
                  text: -> { params[:text] },
                  files: -> { params[:files] },
                  location: -> { params[:location] },
+                 reply_to: -> { params[:reply_to] },
                  idempotency_key: -> { params[:key] }
 
       def keep_answers(notification, answers) = params[:sent] << [ notification, answers ]
@@ -140,6 +141,26 @@ RSpec.describe Noticed::DeliveryMethods::Openwa do
       }).to have_been_made.once
       expect(a_request(:post, %r{/messages/send-document\z}).with(headers: { "Idempotency-Key" => "#{key}-1" }) { |request|
         JSON.parse(request.body)["caption"] == params[:text]
+      }).to have_been_made.once
+    end
+  end
+
+  describe "a reply with a file", vcr: { cassette_name: "delivery_method/reply_with_file" } do
+    let(:quoted) do
+      OpenwaSpecSupport.client.send_text(Noticed::Openwa::Client.chat_id(OpenwaSpecSupport.number),
+                                         "noticed-openwa: the notification replied to",
+                                         idempotency_key: OpenwaSpecSupport.idempotency_key)
+    end
+    let(:params) do
+      { to: OpenwaSpecSupport.number, text: "noticed-openwa: a reply with a file", key:, reply_to: quoted[:message_id],
+        files: [ { content: OpenwaSpecSupport::PDF, mimetype: "application/pdf", filename: "noticed-openwa.pdf" } ] }
+    end
+
+    it "quotes it on the message with the text, the file's" do
+      delivery
+
+      expect(a_request(:post, %r{/messages/send-document\z}).with(headers: { "Idempotency-Key" => "#{key}-1" }) { |request|
+        JSON.parse(request.body).values_at("caption", "quotedMessageId") == [ params[:text], quoted[:message_id] ]
       }).to have_been_made.once
     end
   end

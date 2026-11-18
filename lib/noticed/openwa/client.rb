@@ -19,6 +19,8 @@ module Noticed
       NETWORK_ERRORS = [ Timeout::Error, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, Errno::ETIMEDOUT,
                          SocketError, EOFError, IOError, OpenSSL::SSL::SSLError ].freeze
       NOT_ON_WHATSAPP = /not (?:a )?registered|not on whatsapp/i
+      # A 404 for a quoted message OpenWA can't find (a send's quotedMessageId), not for the session.
+      MESSAGE_NOT_FOUND = /\AMessage .+ not found/
       # A 400 for a session that isn't started: nothing was sent, and it can be started again.
       SESSION_NOT_STARTED = /session is not (?:started|active)/i
       # Digits long enough to be a number, kept out of error messages.
@@ -73,40 +75,49 @@ module Noticed
       # Each send returns OpenWA's answer and the chat it went to ({ message_id:, timestamp:, chat_id: }): the message
       # was handed to the session, not yet delivered. The idempotency key makes a retry with the same key and body replay
       # the first answer.
-      def send_text(chat_id, text, link_preview: nil, idempotency_key: nil)
-        send_message_request("send-text", { chatId: chat_id, text:, linkPreview: link_preview }, idempotency_key)
+      def send_text(chat_id, text, link_preview: nil, quoted_message_id: nil, idempotency_key: nil)
+        body = { chatId: chat_id, text:, linkPreview: link_preview, quotedMessageId: quoted_message_id }
+        send_message_request("send-text", body, idempotency_key)
       end
 
       # content: the file's bytes, sent as base64.
-      def send_image(chat_id, content:, mimetype:, caption: nil, idempotency_key: nil)
-        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, caption: }
+      def send_image(chat_id, content:, mimetype:, caption: nil, quoted_message_id: nil, idempotency_key: nil)
+        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, caption:,
+                 quotedMessageId: quoted_message_id }
         send_message_request("send-image", body, idempotency_key)
       end
 
       # An MP4 (H.264 and AAC), which plays in the chat; other formats can't be counted on to, so send them as documents.
-      def send_video(chat_id, content:, mimetype: "video/mp4", caption: nil, idempotency_key: nil)
-        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, caption: }
+      def send_video(chat_id, content:, mimetype: "video/mp4", caption: nil, quoted_message_id: nil,
+                     idempotency_key: nil)
+        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, caption:,
+                 quotedMessageId: quoted_message_id }
         send_message_request("send-video", body, idempotency_key)
       end
 
       # An audio file, played in the chat (one of AUDIO_TYPES), or a voice note (voice_note: true, an OGG with Opus):
       # WhatsApp shows no caption on either.
-      def send_audio(chat_id, content:, mimetype:, voice_note: false, idempotency_key: nil)
+      def send_audio(chat_id, content:, mimetype:, voice_note: false, quoted_message_id: nil, idempotency_key: nil)
         check_voice_note!(mimetype) if voice_note
-        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, ptt: (true if voice_note) }
+        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, ptt: (true if voice_note),
+                 quotedMessageId: quoted_message_id }
         send_message_request("send-audio", body, idempotency_key)
       end
 
       # A map pin: description is the place's name, shown on the pin, and address the line under it.
-      def send_location(chat_id, latitude:, longitude:, description: nil, address: nil, idempotency_key: nil)
+      def send_location(chat_id, latitude:, longitude:, description: nil, address: nil, quoted_message_id: nil,
+                        idempotency_key: nil)
         raise ArgumentError, "latitude and longitude are required" if latitude.nil? || longitude.nil?
 
-        body = { chatId: chat_id, latitude: Float(latitude), longitude: Float(longitude), description:, address: }
+        body = { chatId: chat_id, latitude: Float(latitude), longitude: Float(longitude), description:, address:,
+                 quotedMessageId: quoted_message_id }
         send_message_request("send-location", body, idempotency_key)
       end
 
-      def send_document(chat_id, content:, mimetype:, filename:, caption: nil, idempotency_key: nil)
-        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, filename:, caption: }
+      def send_document(chat_id, content:, mimetype:, filename:, caption: nil, quoted_message_id: nil,
+                        idempotency_key: nil)
+        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, filename:, caption:,
+                 quotedMessageId: quoted_message_id }
         send_message_request("send-document", body, idempotency_key)
       end
 
@@ -115,19 +126,22 @@ module Noticed
       # documents), or the text alone without files. WhatsApp shows no caption on audio: when the last file is audio, the
       # text follows the files as a message of its own. files: [{ content:, mimetype:, filename:, voice_note: }]; content
       # may be a lambda, called only when that file is sent. Each message's idempotency key is the given one, suffixed
-      # with its position when there are files (`-text` for a text after them). Returns OpenWA's answers.
-      def send_message(chat_id, text:, files: [], idempotency_key: nil, link_preview: nil)
-        return [ send_text(chat_id, text, link_preview:, idempotency_key:) ] if files.empty?
+      # with its position when there are files (`-text` for a text after them). quoted_message_id makes the message with
+      # the text a reply to that message. Returns OpenWA's answers.
+      def send_message(chat_id, text:, files: [], idempotency_key: nil, link_preview: nil, quoted_message_id: nil)
+        return [ send_text(chat_id, text, link_preview:, quoted_message_id:, idempotency_key:) ] if files.empty?
 
         files.each { |file| check_voice_note!(file.fetch(:mimetype)) if file[:voice_note] }
         captioned = media_kind(files.last.fetch(:mimetype)) != :audio
         answers = files.each_with_index.map do |file, index|
-          send_file(chat_id, file, caption: (text if captioned && index == files.size - 1),
+          with_text = captioned && index == files.size - 1
+          send_file(chat_id, file, caption: (text if with_text), quoted_message_id: (quoted_message_id if with_text),
                                    idempotency_key: idempotency_key && "#{idempotency_key}-#{index + 1}")
         end
         return answers if captioned
 
-        answers << send_text(chat_id, text, link_preview:, idempotency_key: idempotency_key && "#{idempotency_key}-text")
+        answers << send_text(chat_id, text, link_preview:, quoted_message_id:,
+                                            idempotency_key: idempotency_key && "#{idempotency_key}-text")
       end
 
       # The session's webhooks, as OpenWA returns them ({ id:, url:, events:, active:, ... }); never
@@ -168,16 +182,19 @@ module Noticed
 
       private
 
-      def send_file(chat_id, file, caption:, idempotency_key:)
+      def send_file(chat_id, file, caption:, quoted_message_id:, idempotency_key:)
         content = file.fetch(:content)
         content = content.call if content.respond_to?(:call)
         mimetype = file.fetch(:mimetype)
 
         case media_kind(mimetype)
-        when :image then send_image(chat_id, content:, mimetype:, caption:, idempotency_key:)
-        when :video then send_video(chat_id, content:, mimetype:, caption:, idempotency_key:)
-        when :audio then send_audio(chat_id, content:, mimetype:, voice_note: file[:voice_note], idempotency_key:)
-        else send_document(chat_id, content:, mimetype:, filename: file.fetch(:filename), caption:, idempotency_key:)
+        when :image then send_image(chat_id, content:, mimetype:, caption:, quoted_message_id:, idempotency_key:)
+        when :video then send_video(chat_id, content:, mimetype:, caption:, quoted_message_id:, idempotency_key:)
+        when :audio
+          send_audio(chat_id, content:, mimetype:, voice_note: file[:voice_note], quoted_message_id:, idempotency_key:)
+        else
+          send_document(chat_id, content:, mimetype:, filename: file.fetch(:filename), caption:, quoted_message_id:,
+                                 idempotency_key:)
         end
       end
 
@@ -206,6 +223,11 @@ module Noticed
                                                                   headers: { "Idempotency-Key" => idempotency_key }.compact,
                                                                   operation: endpoint.tr("-", "_"))
         answer.merge(chat_id: body[:chatId])
+      rescue QuotedMessageNotFoundError
+        raise unless body[:quotedMessageId]
+
+        # OpenWA sent nothing and released the key: the message goes again, without the quote.
+        send_message_request(endpoint, body.except(:quotedMessageId), idempotency_key)
       end
 
       # secrets: values kept out of the error's message, should OpenWA's reason quote them.
@@ -247,6 +269,7 @@ module Noticed
         when 409 then body["code"] == "IDEMPOTENCY_OUTCOME_UNKNOWN" ? UnknownOutcomeError : RetryableError
         when 408, 429, 500.. then RetryableError
         when 400 then client_error_class(body)
+        when 404 then MESSAGE_NOT_FOUND.match?(messages(body)) ? QuotedMessageNotFoundError : RequestError
         else RequestError
         end
       end

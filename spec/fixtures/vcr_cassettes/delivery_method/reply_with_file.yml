@@ -1,0 +1,189 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/messages/send-text
+    body:
+      encoding: UTF-8
+      string: '{"chatId":"openwa-number-a@c.us","text":"noticed-openwa: the notification
+        replied to"}'
+    headers:
+      Idempotency-Key:
+      - noticed-openwa-spec-9db1e5d8-5bb3-4aa5-abb4-b8eeacb642b8
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      X-Request-Id:
+      - d2ec20c6-2e68-4474-976f-d7da5e7977c4
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-PFu3vFE9FIultv1R0rC4Nmly'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '9'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '95'
+      X-Ratelimit-Reset-Medium:
+      - '51'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '993'
+      X-Ratelimit-Reset-Long:
+      - '1636'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '89'
+      Etag:
+      - W/"59-QwNvslG+RpNPX1sXE8cd3o5HOUE"
+      Date:
+      - Wed, 18 Nov 2026 20:56:10 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '{"messageId":"true_100000000000001@lid_3EB05D3BC398F942AA10FA_out","timestamp":1795035370}'
+  recorded_at: Wed, 18 Nov 2026 20:56:10 GMT
+- request:
+    method: post
+    uri: https://openwa-host.placeholder/api/sessions/openwa-session-placeholder/messages/send-document
+    body:
+      encoding: UTF-8
+      string: '{"chatId":"openwa-number-a@c.us","base64":"JVBERi0xLjEKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMjAwIDIwMF0+PmVuZG9iagp0cmFpbGVyPDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==","mimetype":"application/pdf","filename":"noticed-openwa.pdf","caption":"noticed-openwa:
+        a reply with a file","quotedMessageId":"true_100000000000001@lid_3EB05D3BC398F942AA10FA_out"}'
+    headers:
+      Idempotency-Key:
+      - noticed-openwa-spec-8b1c2dcb-6965-4493-96f2-9aab8dd2927b-1
+      X-Api-Key:
+      - openwa-api-key-placeholder
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      User-Agent:
+      - Ruby
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      X-Request-Id:
+      - 254fcbde-b1d8-4bd3-9ccc-5dc8582cede1
+      Content-Security-Policy:
+      - 'default-src ''self'';base-uri ''self'';font-src ''self'';form-action ''self'';frame-ancestors
+        ''self'';img-src ''self'' data: blob: https:;object-src ''none'';script-src
+        ''self'' ''nonce-AZEXk3qTw2x9aYv6lhogdkMx'';script-src-attr ''none'';style-src
+        ''self'' ''unsafe-inline'';media-src ''self'' data: blob: https:;connect-src
+        ''self'''
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Cross-Origin-Resource-Policy:
+      - cross-origin
+      Origin-Agent-Cluster:
+      - "?1"
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Dns-Prefetch-Control:
+      - 'off'
+      X-Download-Options:
+      - noopen
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      X-Xss-Protection:
+      - '0'
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - X-RateLimit-Limit-short,X-RateLimit-Remaining-short,X-RateLimit-Reset-short,X-RateLimit-Limit-medium,X-RateLimit-Remaining-medium,X-RateLimit-Reset-medium,X-RateLimit-Limit-long,X-RateLimit-Remaining-long,X-RateLimit-Reset-long,X-RateLimit-Limit-instance,X-RateLimit-Remaining-instance,X-RateLimit-Reset-instance,X-RateLimit-Limit-ingress-ip,X-RateLimit-Remaining-ingress-ip,X-RateLimit-Reset-ingress-ip,Retry-After,Retry-After-short,Retry-After-medium,Retry-After-long,Retry-After-instance,Retry-After-ingress-ip,Idempotent-Replayed
+      X-Ratelimit-Limit-Short:
+      - '10'
+      X-Ratelimit-Remaining-Short:
+      - '9'
+      X-Ratelimit-Reset-Short:
+      - '1'
+      X-Ratelimit-Limit-Medium:
+      - '100'
+      X-Ratelimit-Remaining-Medium:
+      - '99'
+      X-Ratelimit-Reset-Medium:
+      - '60'
+      X-Ratelimit-Limit-Long:
+      - '1000'
+      X-Ratelimit-Remaining-Long:
+      - '998'
+      X-Ratelimit-Reset-Long:
+      - '2482'
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '89'
+      Etag:
+      - W/"59-gYh5M9IDAqhaA18Q9cxcPDRucy8"
+      Date:
+      - Wed, 18 Nov 2026 20:56:11 GMT
+      Connection:
+      - keep-alive
+      Keep-Alive:
+      - timeout=5
+    body:
+      encoding: UTF-8
+      string: '{"messageId":"true_100000000000001@lid_3EB0079EFB158E47CBE695_out","timestamp":1795035371}'
+  recorded_at: Wed, 18 Nov 2026 20:56:11 GMT
+recorded_with: VCR 6.4.1

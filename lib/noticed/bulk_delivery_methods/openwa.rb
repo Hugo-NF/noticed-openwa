@@ -3,7 +3,7 @@
 module Noticed
   module BulkDeliveryMethods
     # bulk_deliver_by :openwa, url:, api_key:, session_id:, to:, text:, and optionally files:, location:,
-    # idempotency_key:, ca_file:, after_send:, not_on_whatsapp:
+    # reply_to:, idempotency_key:, ca_file:, after_send:, not_on_whatsapp:
     #
     # Once per event, whatever its recipients: the message goes to `to`, a phone number or a chat id (a group's
     # included), or to each of a list of them. The options are those of `deliver_by :openwa`, evaluated on the event.
@@ -18,6 +18,9 @@ module Noticed
 
       def deliver
         to = evaluate_option(:to)
+        # A message is in one chat: it can't be quoted in the others of a list.
+        raise ArgumentError, "reply_to needs one chat, not a list" if to.is_a?(Array) && evaluate_option(:reply_to)
+
         key = evaluate_option(:idempotency_key) || default_idempotency_key
         answers = if to.is_a?(Array)
           to.each_with_index.flat_map { |chat, index| send_to(chat, key && "#{key}-chat#{index + 1}") }

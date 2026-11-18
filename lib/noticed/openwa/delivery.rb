@@ -14,14 +14,15 @@ module Noticed
       private
 
       # OpenWA's answers for the message sent to `to`, a phone number or a chat id: the location first, when there's
-      # one (a pin with its own description), then the text and the files. A chat WhatsApp can't resolve goes to
+      # one (a pin with its own description), then the text and the files; the message with the text replies to
+      # `reply_to`, when given. A chat WhatsApp can't resolve goes to
       # `not_on_whatsapp` when the app gives one, instead of failing the job: nothing more is sent. Without it, the
       # error is raised.
       def send_to(to, idempotency_key)
         chat_id = Client.chat_id(to)
         answers = send_location_to(chat_id, idempotency_key)
         answers + client.send_message(chat_id, text: evaluate_option(:text), files: Array(evaluate_option(:files)),
-                                               idempotency_key:)
+                                               quoted_message_id: evaluate_option(:reply_to), idempotency_key:)
       rescue NotOnWhatsappError => e
         raise unless config[:not_on_whatsapp]
 

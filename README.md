@@ -64,6 +64,7 @@ end
 | `text` | Required: the message, WhatsApp's markup included |
 | `files` | `[{ filename:, mimetype:, content:, voice_note: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent; `voice_note: true` sends an OGG with Opus (`audio/ogg`) as a voice note, and refuses any other type before sending |
 | `location` | `{ latitude:, longitude:, description:, address: }`: a map pin (`description` is the place's name, `address` the line under it), sent **first**, before the text and the files, with its key suffixed `-location` |
+| `reply_to` | The id of a message to reply to (a `message_id` the app kept with `after_send`): the message with the text quotes it (the text, or the last file when it carries the text). A message OpenWA can't find is sent again without the quote, with the same key: the notification still arrives, just not as a reply (rarely, when WhatsApp Web refuses the quote only after OpenWA resolved the recipient again, a quoted copy can arrive too) |
 | `idempotency_key` | Defaults to `noticed-<notification id>`; an ephemeral notifier has none: pass one so a retried job doesn't send twice |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
 | `after_send` | Called once every message was sent, with OpenWA's answers (`[{ message_id:, timestamp:, chat_id: }, ...]`, in order; `chat_id` is the chat the message was sent to): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
@@ -167,6 +168,7 @@ noticed's (`if`, `unless`, `wait`, `queue`, ...). The differences:
 | `idempotency_key` | Defaults to `noticed-event-<event id>` (apart from a notification's `noticed-<id>`, which can share the number); with a list, each chat's is suffixed `-chat1`, `-chat2`, ..., so a job retried after a failure halfway replays the chats already sent. An ephemeral notifier's event has none: pass one |
 | `after_send` | Called once every message was sent, with OpenWA's answers for every chat, in order: a lambda run on the event with the answers, or a notifier method's name, called with the event and the answers |
 | `not_on_whatsapp` | Called for each chat WhatsApp can't resolve, with the chat id and the error: a lambda run on the event, or a notifier method's name, called with the event, the chat id and the error. The other chats of a list are still sent; without it, the error is raised and the chats after it aren't |
+| `reply_to` | As `deliver_by :openwa`'s, with one chat; with a list it raises `ArgumentError` before sending (a message is in one chat only) |
 
 A group's chat id is what WhatsApp holds for it: the session must be in the group, and the client sends to it as to any
 other chat. The delivery method's retries go on its own load hook:
@@ -183,7 +185,7 @@ end
 client = Noticed::Openwa::Client.new(url:, api_key:, session_id:)
 
 client.check_number("+55 61 90000-0001")   # => { exists: true, whatsapp_id: "556100000001@c.us" }
-client.send_text(chat_id, "Hello", idempotency_key: "welcome-42")
+client.send_text(chat_id, "Hello", idempotency_key: "welcome-42")       # quoted_message_id: replies to a message
 # => { message_id: "...", timestamp: 1795021278, chat_id: "5561900000001@c.us" }
 client.send_image(chat_id, content: png_bytes, mimetype: "image/png", caption: "...")
 client.send_video(chat_id, content: mp4_bytes, caption: "...")            # an MP4 (H.264 and AAC)
@@ -308,6 +310,7 @@ Their messages name the call, the status and OpenWA's reason, with any phone num
 | `RetryableError` | Nothing was sent: the session isn't started or ready, `IDEMPOTENCY_KEY_IN_PROGRESS`, a rate limit (`429`), a timeout, `5xx`, OpenWA unreachable | Yes, with the same key |
 | `UnknownOutcomeError` | `IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent | No: a new key may send it twice |
 | `RequestError` | OpenWA refused the request itself | No |
+| `QuotedMessageNotFoundError` | A `RequestError`: the message a send quotes (`quoted_message_id`) isn't one OpenWA can find (`404`). The client's sends handle it themselves, sending again without the quote | No |
 | `InvalidSignatureError` | A webhook delivery's `X-OpenWA-Signature` is missing, malformed or not the body's (`Webhook.verify!`) | No: refuse the delivery |
 
 Retrying is the app's choice, for example on the delivery method's load hook (the bulk one's is
