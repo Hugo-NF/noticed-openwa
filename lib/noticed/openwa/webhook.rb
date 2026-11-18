@@ -3,6 +3,7 @@
 require "json"
 require "openssl"
 require "time"
+require_relative "keys"
 
 module Noticed
   module Openwa
@@ -59,7 +60,7 @@ module Noticed
 
           Event.new(event: body["event"], session_id: body["sessionId"] || data["sessionId"],
                     idempotency_key: body["idempotencyKey"] || header(headers, IDEMPOTENCY_KEY_HEADER),
-                    occurred_at: time(body["timestamp"]), payload: body, **fields)
+                    occurred_at: time(body["timestamp"]), payload: Keys.symbolize(body), **fields)
         end
 
         private

@@ -68,7 +68,8 @@ RSpec.describe Noticed::Openwa::Webhook do
                                          chat_id: "100000000000001@lid", session_id: "openwa-session-test",
                                          occurred_at: Time.utc(2026, 11, 17, 21, 1, 42.724r), reason: nil)
         expect(event.idempotency_key).to eq(delivery.last.fetch("X-OpenWA-Idempotency-Key"))
-        expect(event.payload).to eq(JSON.parse(delivery.first))
+        expect(event.payload).to eq(Noticed::Openwa::Keys.symbolize(JSON.parse(delivery.first)))
+        expect(event.payload.dig(:data, :message_id)).to eq(event.message_id)
       end
     end
 

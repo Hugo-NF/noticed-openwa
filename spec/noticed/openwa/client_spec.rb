@@ -25,7 +25,7 @@ RSpec.describe Noticed::Openwa::Client do
         status = client.session_status
 
         expect(status).to include(state: "ready", reason: nil, restriction: nil)
-        expect(status[:raw]).to include("id" => ENV.fetch("OPENWA_SESSION_ID"), "status" => "ready")
+        expect(status[:raw]).to include(id: ENV.fetch("OPENWA_SESSION_ID"), status: "ready")
       end
     end
 
@@ -110,7 +110,7 @@ RSpec.describe Noticed::Openwa::Client do
     it "returns the message's id" do
       response = client.send_text(chat_id, "noticed-openwa: send_text", idempotency_key: OpenwaSpecSupport.idempotency_key)
 
-      expect(response).to include("messageId" => a_kind_of(String))
+      expect(response).to include(message_id: a_kind_of(String), timestamp: a_kind_of(Integer), chat_id:)
     end
   end
 
@@ -119,8 +119,8 @@ RSpec.describe Noticed::Openwa::Client do
       key = OpenwaSpecSupport.idempotency_key
       first = client.send_text(chat_id, "noticed-openwa: sent once", idempotency_key: key)
 
-      expect(client.send_text(chat_id, "noticed-openwa: sent once", idempotency_key: key)["messageId"])
-        .to eq(first["messageId"])
+      expect(client.send_text(chat_id, "noticed-openwa: sent once", idempotency_key: key)[:message_id])
+        .to eq(first[:message_id])
     end
   end
 
@@ -192,7 +192,7 @@ RSpec.describe Noticed::Openwa::Client do
                                             caption: "noticed-openwa: send_image",
                                             idempotency_key: OpenwaSpecSupport.idempotency_key)
 
-      expect(response).to include("messageId" => a_kind_of(String))
+      expect(response).to include(message_id: a_kind_of(String), timestamp: a_kind_of(Integer), chat_id:)
     end
   end
 
@@ -202,7 +202,7 @@ RSpec.describe Noticed::Openwa::Client do
                                                filename: "noticed-openwa.pdf", caption: "noticed-openwa: send_document",
                                                idempotency_key: OpenwaSpecSupport.idempotency_key)
 
-      expect(response).to include("messageId" => a_kind_of(String))
+      expect(response).to include(message_id: a_kind_of(String), timestamp: a_kind_of(Integer), chat_id:)
     end
   end
 
@@ -245,8 +245,8 @@ RSpec.describe Noticed::Openwa::Client do
     after { client.unregister_webhook(url: OpenwaSpecSupport.webhook_url) }
 
     it "returns the session's webhooks, the registered one included" do
-      expect(client.webhooks).to include(a_hash_including("id" => a_kind_of(String), "url" => OpenwaSpecSupport.webhook_url,
-                                                          "events" => [ "session.status" ], "active" => true))
+      expect(client.webhooks).to include(a_hash_including(id: a_kind_of(String), url: OpenwaSpecSupport.webhook_url,
+                                                          events: [ "session.status" ], active: true, retry_count: 3))
     end
   end
 
@@ -267,11 +267,11 @@ RSpec.describe Noticed::Openwa::Client do
       it "updates it, leaving one webhook for the url", :aggregate_failures do
         webhook = register
 
-        expect(webhook).to include("url" => OpenwaSpecSupport.webhook_url, "events" => [ "message.ack", "message.failed" ],
-                                   "retryCount" => 3, "active" => true)
-        expect(a_request(:put, %r{/webhooks/#{webhook['id']}\z}).with(body: hash_including("active" => true)))
+        expect(webhook).to include(url: OpenwaSpecSupport.webhook_url, events: [ "message.ack", "message.failed" ],
+                                   retry_count: 3, active: true)
+        expect(a_request(:put, %r{/webhooks/#{webhook[:id]}\z}).with(body: hash_including("active" => true)))
           .to have_been_made.at_least_once
-        expect(client.webhooks.count { |each| each["url"] == OpenwaSpecSupport.webhook_url }).to eq(1)
+        expect(client.webhooks.count { |each| each[:url] == OpenwaSpecSupport.webhook_url }).to eq(1)
       end
     end
 
@@ -316,7 +316,7 @@ RSpec.describe Noticed::Openwa::Client do
       it "deletes it", :aggregate_failures do
         expect(unregister).to eq(1)
         expect(a_request(:delete, %r{/webhooks/[^/]+\z})).to have_been_made.once
-        expect(client.webhooks.none? { |webhook| webhook["url"] == OpenwaSpecSupport.webhook_url }).to be(true)
+        expect(client.webhooks.none? { |webhook| webhook[:url] == OpenwaSpecSupport.webhook_url }).to be(true)
       end
     end
 

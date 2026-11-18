@@ -6,6 +6,7 @@ require "net/http"
 require "openssl"
 require "time"
 require "uri"
+require_relative "keys"
 
 module Noticed
   module Openwa
@@ -49,10 +50,10 @@ module Noticed
       # and OpenWA's answer. A restricted session can still be `ready`. An unknown session raises RequestError.
       def session_status
         body = request(Net::HTTP::Get, nil, operation: "session_status")
-        restriction = body["restriction"]
-        restriction &&= { kind: restriction["kind"], code: restriction["code"],
-                          expires_at: restriction["expiresAt"] && Time.iso8601(restriction["expiresAt"]) }
-        { state: body["status"], reason: body["lastError"], restriction:, raw: body }
+        restriction = body[:restriction]
+        restriction &&= { kind: restriction[:kind], code: restriction[:code],
+                          expires_at: restriction[:expires_at] && Time.iso8601(restriction[:expires_at]) }
+        { state: body[:status], reason: body[:last_error], restriction:, raw: body }
       end
 
       # { exists:, whatsapp_id: }: whether WhatsApp has an account for the number, and the chat id it holds for it (it
@@ -62,11 +63,12 @@ module Noticed
         raise ArgumentError, "the number has no digits" if digits.empty?
 
         body = request(Net::HTTP::Get, "contacts/check/#{digits}", operation: "check_number")
-        { exists: body["exists"] == true, whatsapp_id: body["whatsappId"] }
+        { exists: body[:exists] == true, whatsapp_id: body[:whatsapp_id] }
       end
 
-      # Each send returns OpenWA's answer ({ "messageId" =>, "timestamp" => }): the message was handed to the session,
-      # not yet delivered. The idempotency key makes a retry with the same key and body replay the first answer.
+      # Each send returns OpenWA's answer and the chat it went to ({ message_id:, timestamp:, chat_id: }): the message
+      # was handed to the session, not yet delivered. The idempotency key makes a retry with the same key and body replay
+      # the first answer.
       def send_text(chat_id, text, link_preview: nil, idempotency_key: nil)
         send_message_request("send-text", { chatId: chat_id, text:, linkPreview: link_preview }, idempotency_key)
       end
@@ -96,7 +98,7 @@ module Noticed
         end
       end
 
-      # The session's webhooks, as OpenWA returns them ({ "id" =>, "url" =>, "events" =>, "active" =>, ... }); never
+      # The session's webhooks, as OpenWA returns them ({ id:, url:, events:, active:, ... }); never
       # their secrets or headers.
       def webhooks
         request(Net::HTTP::Get, "webhooks", operation: "webhooks")
@@ -110,9 +112,9 @@ module Noticed
 
         body = { url:, events: Array(events), secret:, headers:, retryCount: retry_count }.compact
         listed = request(Net::HTTP::Get, "webhooks", operation: "register_webhook")
-        existing = listed.find { |webhook| webhook["url"] == url } if listed.is_a?(Array)
+        existing = listed.find { |webhook| webhook[:url] == url } if listed.is_a?(Array)
         if existing
-          request(Net::HTTP::Put, "webhooks/#{URI.encode_www_form_component(existing['id'])}",
+          request(Net::HTTP::Put, "webhooks/#{URI.encode_www_form_component(existing[:id])}",
                   body: body.merge(active: true), operation: "register_webhook", secrets: [ secret ])
         else
           request(Net::HTTP::Post, "webhooks", body:, operation: "register_webhook", secrets: [ secret ])
@@ -124,9 +126,9 @@ module Noticed
         raise ArgumentError, "url is required" if blank?(url)
 
         listed = request(Net::HTTP::Get, "webhooks", operation: "unregister_webhook")
-        matching = listed.is_a?(Array) ? listed.select { |webhook| webhook["url"] == url } : []
+        matching = listed.is_a?(Array) ? listed.select { |webhook| webhook[:url] == url } : []
         matching.each do |webhook|
-          request(Net::HTTP::Delete, "webhooks/#{URI.encode_www_form_component(webhook['id'])}",
+          request(Net::HTTP::Delete, "webhooks/#{URI.encode_www_form_component(webhook[:id])}",
                   operation: "unregister_webhook")
         end
         matching.size
@@ -151,9 +153,10 @@ module Noticed
           raise ArgumentError, "the idempotency key must be 1-255 visible ASCII characters"
         end
 
-        request(Net::HTTP::Post, "messages/#{endpoint}", body: body.compact,
-                                                         headers: { "Idempotency-Key" => idempotency_key }.compact,
-                                                         operation: endpoint.tr("-", "_"))
+        answer = request(Net::HTTP::Post, "messages/#{endpoint}", body: body.compact,
+                                                                  headers: { "Idempotency-Key" => idempotency_key }.compact,
+                                                                  operation: endpoint.tr("-", "_"))
+        answer.merge(chat_id: body[:chatId])
       end
 
       # secrets: values kept out of the error's message, should OpenWA's reason quote them.
@@ -182,7 +185,7 @@ module Noticed
       def handle(response, operation, secrets)
         status = response.code.to_i
         body = parse(response.body)
-        return body if status.between?(200, 299)
+        return Keys.symbolize(body) if status.between?(200, 299)
 
         body = {} unless body.is_a?(Hash)
         raise error_class(status, body).new(error_message(operation, status, body, secrets),
