@@ -10,7 +10,7 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
   let(:recipients) { [ Object.new, Object.new ] }
   let(:key) { OpenwaSpecSupport.idempotency_key }
   let(:overrides) { {} }
-  let(:answer) { a_hash_including("messageId" => a_kind_of(String), "timestamp" => a_kind_of(Integer)) }
+  let(:answer) { a_hash_including(message_id: a_kind_of(String), timestamp: a_kind_of(Integer), chat_id: a_kind_of(String)) }
 
   before do
     notifier = Class.new(Noticed::Ephemeral) do
@@ -148,10 +148,12 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
       end
       let(:overrides) { { after_send: :keep_answers } }
 
-      it "is called once, with every chat's answer, in order" do
+      it "is called once, with every chat's answer, in order, each with its chat" do
         delivery
 
-        expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecBulkNotifier), [ answer, answer ] ] ])
+        expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecBulkNotifier),
+                                           [ a_hash_including(chat_id: Noticed::Openwa::Client.chat_id(OpenwaSpecSupport.number)),
+                                             a_hash_including(chat_id: OpenwaSpecSupport.group) ] ] ])
       end
     end
 

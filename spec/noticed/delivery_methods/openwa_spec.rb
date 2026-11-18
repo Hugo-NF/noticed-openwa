@@ -61,7 +61,10 @@ RSpec.describe Noticed::DeliveryMethods::Openwa do
   describe "after_send" do
     let(:params) { { to: OpenwaSpecSupport.number, text: "noticed-openwa: delivery method", key:, sent: [] } }
     let(:overrides) { { after_send: ->(answers) { params[:sent] << [ self, answers ] } } }
-    let(:answer) { a_hash_including("messageId" => a_kind_of(String), "timestamp" => a_kind_of(Integer)) }
+    let(:answer) do
+      { message_id: a_kind_of(String), timestamp: a_kind_of(Integer),
+        chat_id: Noticed::Openwa::Client.chat_id(OpenwaSpecSupport.number) }
+    end
 
     context "with a text", vcr: { cassette_name: "delivery_method/text" } do
       it "is called once, on the notification, with OpenWA's answer" do

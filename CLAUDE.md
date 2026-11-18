@@ -94,6 +94,9 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 ## Code style
 
 - RuboCop (`rubocop-rails-omakase`, `rubocop-rspec`), 120 characters per line.
+- Everything the gem returns is a Ruby hash with snake_case symbol keys: OpenWA's answers go through
+  `Noticed::Openwa::Keys.symbolize` (the client converts every successful answer; the webhook parser, its payload). Only
+  keys change, never values; the gem reads OpenWA's string keys only internally, before converting.
 - Guard clauses with a blank line after. `&.` over explicit nil checks.
 - Comments say why, not what; no issue references (`#123`) in comments.
 - Supported Rubies: 3.3 and up. A change to them changes, together: the gemspec's `required_ruby_version`, the

@@ -1,3 +1,8 @@
+> [!WARNING]
+> **In active development: the API isn't stable yet.** Options, method names and the shapes of what the gem returns can
+> change between versions, minor ones included, until it says otherwise here. Pin an exact version, and read the
+> release notes before upgrading.
+
 # noticed-openwa
 
 [![Gem](https://img.shields.io/gem/v/noticed-openwa)](https://rubygems.org/gems/noticed-openwa)
@@ -60,7 +65,7 @@ end
 | `files` | `[{ filename:, mimetype:, content: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent |
 | `idempotency_key` | Defaults to `noticed-<notification id>`; an ephemeral notifier has none: pass one so a retried job doesn't send twice |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
-| `after_send` | Called once every message was sent, with OpenWA's answers (`[{ "messageId" =>, "timestamp" => }, ...]`, in order): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
+| `after_send` | Called once every message was sent, with OpenWA's answers (`[{ message_id:, timestamp:, chat_id: }, ...]`, in order; `chat_id` is the chat the message was sent to): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
 | `not_on_whatsapp` | Called instead of failing the job when WhatsApp can't resolve the recipient (`NotOnWhatsappError`; retrying right away gets the same answer), with the chat id and the error: a lambda run on the notification, or a notifier method's name, called with the notification, the chat id and the error. Without it, the error is raised |
 
 Each option is a value, a lambda evaluated on the notification, or the name of a notifier method, as in noticed's own
@@ -90,7 +95,7 @@ that sent the message, keeping the ids in a column of its own (here a JSON array
 
 ```ruby
 deliver_by :openwa, # ...
-           after_send: ->(answers) { update!(openwa_message_ids: answers.pluck("messageId")) }
+           after_send: ->(answers) { update!(openwa_message_ids: answers.pluck(:message_id)) }
 
 # On a message.ack delivery:
 notification = Noticed::Notification.find_by("openwa_message_ids @> ?", [ event.message_id ].to_json)
@@ -169,11 +174,17 @@ client = Noticed::Openwa::Client.new(url:, api_key:, session_id:)
 
 client.check_number("+55 61 90000-0001")   # => { exists: true, whatsapp_id: "556100000001@c.us" }
 client.send_text(chat_id, "Hello", idempotency_key: "welcome-42")
+# => { message_id: "...", timestamp: 1795021278, chat_id: "5561900000001@c.us" }
 client.send_image(chat_id, content: png_bytes, mimetype: "image/png", caption: "...")
 client.send_document(chat_id, content: pdf_bytes, mimetype: "application/pdf", filename: "ticket.pdf", caption: "...")
 client.send_message(chat_id, text: "...", files: [...], idempotency_key: "...")
 Noticed::Openwa::Client.chat_id("+55 61 90000-0001") # => "5561900000001@c.us"
 ```
+
+Everything the gem returns is a Ruby hash with snake_case symbol keys: OpenWA's answers are converted, nested hashes
+included (`"messageId"` is `:message_id`, `"lastError"` is `:last_error`), and only the keys change. A send returns
+OpenWA's answer and the chat it was sent to (`chat_id`, as the gem sent it). The `message_id` holds the chat WhatsApp
+used, often the recipient's `@lid`, so it can differ.
 
 The chat id WhatsApp holds can differ from a number's digits (Brazilian mobiles may be held without their ninth digit):
 send to the `whatsapp_id` the check returns. A number the check finds can still fail to send with `NotOnWhatsappError`,
@@ -187,7 +198,7 @@ none on Baileys). The delivery method leaves it out.
 
 ```ruby
 client.session_status
-# => { state: "ready", reason: nil, restriction: nil, raw: { "id" => "...", "status" => "ready", ... } }
+# => { state: "ready", reason: nil, restriction: nil, raw: { id: "...", status: "ready", ... } }
 ```
 
 - `state` is OpenWA's status, the same values as the `session.status` webhook events: `"created"`, `"initializing"`,
@@ -210,7 +221,7 @@ OpenWA reports what happens to a sent message (`message.ack`) and to the session
 client.register_webhook(url: "https://app.example.com/openwa/events", secret: ENV["OPENWA_WEBHOOK_SECRET"],
                         events: %w[message.ack session.status session.disconnected session.reconnect_loop
                                    session.restriction],
-                        retry_count: 3)   # => { "id" => "...", "url" => "...", "events" => [...], "active" => true, ... }
+                        retry_count: 3)   # => { id: "...", url: "...", events: [...], active: true, ... }
 client.webhooks                           # => the session's webhooks, without their secrets and headers
 client.unregister_webhook(url: "https://app.example.com/openwa/events")   # => 1, the webhooks deleted
 ```
@@ -255,7 +266,7 @@ end
 
 Every event has `type` (`:message_status` or `:session_state`), `event` (OpenWA's, such as `"message.ack"`),
 `idempotency_key` (the same across OpenWA's retries and redrives of a delivery), `occurred_at` (a `Time`),
-`session_id` and `payload` (the parsed body):
+`session_id` and `payload` (the parsed body, its keys as snake_case symbols):
 
 | OpenWA's event | `type` | Fields |
 |---|---|---|
