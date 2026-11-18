@@ -38,6 +38,9 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
   one-line subclasses stay beside it. A new error with a body goes in its own file.
 - `lib/noticed/delivery_methods/openwa.rb`: `Noticed::DeliveryMethods::Openwa` (`deliver_by :openwa`), loaded on first
   use (an autoload in `lib/noticed/openwa.rb`): it's an Active Job and needs the app's jobs.
+- `lib/noticed/bulk_delivery_methods/openwa.rb`: `Noticed::BulkDeliveryMethods::Openwa` (`bulk_deliver_by :openwa`),
+  once per event to one chat or a list, autoloaded the same way. Both delivery methods send through
+  `lib/noticed/openwa/delivery.rb` (`Noticed::Openwa::Delivery`): a change to sending goes there, for both.
 - `spec/support/dummy_app.rb`: the minimal Rails app noticed needs in the specs.
 - `script/release_version.rb`: the release versions, from the tags; `.github/workflows/release.yml` publishes them.
 - `script/webhook_fixtures.rb`: turns real deliveries (the requests the webhook's URL received) into
@@ -69,12 +72,14 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 - Every variable the specs read (`OPENWA_*`) is listed in the README's recording table and in `.env.test.example`
   (never with a real value), and has a placeholder in `spec/spec_helper.rb` (its default, and its filter when it's a
   value to keep out of cassettes).
-- Never send to a number that isn't the maintainer's: `OPENWA_TEST_NUMBER` is theirs. A spec about a number not on
-  WhatsApp checks it first and stops before sending if it is (a real account would receive the message).
+- Never send to a number or a group that isn't the maintainer's: `OPENWA_TEST_NUMBER` and `OPENWA_TEST_GROUP` are
+  theirs. A spec about a number not on WhatsApp checks it first and stops before sending if it is (a real account
+  would receive the message).
 - `spec/spec_helper.rb` replaces the URL (scheme, host and port), the key, the session, the webhook's URL and secret,
-  the session account's number and name, and both numbers (with and without the ninth digit) with placeholders, valid
-  in a URI and none a prefix of another, drops the `Host` header, and replays them with its defaults. It reads
-  `.env.test.local` only with `OPENWA_RECORD=true`. Check a new cassette for real values before committing it.
+  the session account's number and name, the test group's id, and both numbers (with and without the ninth digit) with
+  placeholders, valid in a URI and none a prefix of another, drops the `Host` header, and replays them with its
+  defaults. It reads `.env.test.local` only with `OPENWA_RECORD=true`. Check a new cassette for real values before
+  committing it.
 - Record against the local OpenWA (`docker-compose.yml`, `http://localhost:2785`, the README's "A local OpenWA"): VCR
   records `localhost`; only `127.0.0.1` passes through.
 - For answers a real session can't give (`409`, `429`, `503`), use the ERB template of a real cassette

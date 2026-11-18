@@ -11,13 +11,12 @@ module Noticed
     # message was sent, with OpenWA's answers, so the app can keep their ids and match the webhook's receipts to the
     # notification.
     class Openwa < DeliveryMethod
+      include Noticed::Openwa::Delivery
+
       required_options :url, :api_key, :session_id, :to, :text
 
       def deliver
-        answers = client.send_message(Noticed::Openwa::Client.chat_id(evaluate_option(:to)),
-                                      text: evaluate_option(:text),
-                                      files: Array(evaluate_option(:files)),
-                                      idempotency_key: evaluate_option(:idempotency_key) || default_idempotency_key)
+        answers = send_to(evaluate_option(:to), evaluate_option(:idempotency_key) || default_idempotency_key)
         after_send(answers)
         answers
       end
@@ -26,11 +25,6 @@ module Noticed
       def default_idempotency_key
         id = notification.id if notification.respond_to?(:id)
         "noticed-#{id}" if id
-      end
-
-      def client
-        Noticed::Openwa::Client.new(url: evaluate_option(:url), api_key: evaluate_option(:api_key),
-                                    session_id: evaluate_option(:session_id), ca_file: evaluate_option(:ca_file))
       end
 
       private
