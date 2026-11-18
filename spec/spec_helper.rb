@@ -46,6 +46,9 @@ module OpenwaSpecSupport
               "0003010100c9fe92ef0000000049454e44ae426082" ].pack("H*")
   # One second of red at 64x64, H.264 and AAC: what WhatsApp plays as a video.
   MP4 = File.binread(File.expand_path("fixtures/files/video.mp4", __dir__)).freeze
+  # One second of a tone: an MP3, and an OGG with Opus (what a voice note must be).
+  MP3 = File.binread(File.expand_path("fixtures/files/audio.mp3", __dir__)).freeze
+  OGG = File.binread(File.expand_path("fixtures/files/voice_note.ogg", __dir__)).freeze
   PDF = "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" \
         "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
 

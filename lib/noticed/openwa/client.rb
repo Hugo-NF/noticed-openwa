@@ -23,6 +23,10 @@ module Noticed
       SESSION_NOT_STARTED = /session is not (?:started|active)/i
       # Digits long enough to be a number, kept out of error messages.
       NUMBER = /\d{6,}/
+      # The audio WhatsApp plays in the chat; any other audio goes as a document.
+      AUDIO_TYPES = %w[audio/mpeg audio/mp4 audio/aac audio/ogg audio/amr].freeze
+      # What a voice note (OpenWA's ptt) must be: OGG with Opus.
+      VOICE_NOTE_TYPE = "audio/ogg"
 
       attr_reader :url, :session_id
 
@@ -85,23 +89,37 @@ module Noticed
         send_message_request("send-video", body, idempotency_key)
       end
 
+      # An audio file, played in the chat (one of AUDIO_TYPES), or a voice note (voice_note: true, an OGG with Opus):
+      # WhatsApp shows no caption on either.
+      def send_audio(chat_id, content:, mimetype:, voice_note: false, idempotency_key: nil)
+        check_voice_note!(mimetype) if voice_note
+        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, ptt: (true if voice_note) }
+        send_message_request("send-audio", body, idempotency_key)
+      end
+
       def send_document(chat_id, content:, mimetype:, filename:, caption: nil, idempotency_key: nil)
         body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, filename:, caption: }
         send_message_request("send-document", body, idempotency_key)
       end
 
       # A text with its files: one message per file, the text as the last one's caption, where the chat shows it
-      # without scrolling back over the others (images as images, MP4s as videos, the rest as documents), or the text
-      # alone without files. files: [{ content:, mimetype:, filename: }]; content may be a lambda, called only when that
-      # file is sent. Each message's idempotency key is the given one, suffixed with its position when there are files.
-      # Returns OpenWA's answers.
+      # without scrolling back over the others (images as images, MP4s as videos, AUDIO_TYPES as audio, the rest as
+      # documents), or the text alone without files. WhatsApp shows no caption on audio: when the last file is audio, the
+      # text follows the files as a message of its own. files: [{ content:, mimetype:, filename:, voice_note: }]; content
+      # may be a lambda, called only when that file is sent. Each message's idempotency key is the given one, suffixed
+      # with its position when there are files (`-text` for a text after them). Returns OpenWA's answers.
       def send_message(chat_id, text:, files: [], idempotency_key: nil, link_preview: nil)
         return [ send_text(chat_id, text, link_preview:, idempotency_key:) ] if files.empty?
 
-        files.each_with_index.map do |file, index|
-          send_file(chat_id, file, caption: index == files.size - 1 ? text : nil,
+        files.each { |file| check_voice_note!(file.fetch(:mimetype)) if file[:voice_note] }
+        captioned = media_kind(files.last.fetch(:mimetype)) != :audio
+        answers = files.each_with_index.map do |file, index|
+          send_file(chat_id, file, caption: (text if captioned && index == files.size - 1),
                                    idempotency_key: idempotency_key && "#{idempotency_key}-#{index + 1}")
         end
+        return answers if captioned
+
+        answers << send_text(chat_id, text, link_preview:, idempotency_key: idempotency_key && "#{idempotency_key}-text")
       end
 
       # The session's webhooks, as OpenWA returns them ({ id:, url:, events:, active:, ... }); never
@@ -147,11 +165,28 @@ module Noticed
         content = content.call if content.respond_to?(:call)
         mimetype = file.fetch(:mimetype)
 
-        case mimetype.split(";").first.strip.downcase
-        when %r{\Aimage/} then send_image(chat_id, content:, mimetype:, caption:, idempotency_key:)
-        when "video/mp4" then send_video(chat_id, content:, mimetype:, caption:, idempotency_key:)
+        case media_kind(mimetype)
+        when :image then send_image(chat_id, content:, mimetype:, caption:, idempotency_key:)
+        when :video then send_video(chat_id, content:, mimetype:, caption:, idempotency_key:)
+        when :audio then send_audio(chat_id, content:, mimetype:, voice_note: file[:voice_note], idempotency_key:)
         else send_document(chat_id, content:, mimetype:, filename: file.fetch(:filename), caption:, idempotency_key:)
         end
+      end
+
+      # How a file of this type is sent: :image, :video, :audio or :document.
+      def media_kind(mimetype)
+        type = mimetype.to_s.split(";").first.to_s.strip.downcase
+        if type.start_with?("image/") then :image
+        elsif type == "video/mp4" then :video
+        elsif AUDIO_TYPES.include?(type) then :audio
+        else :document
+        end
+      end
+
+      def check_voice_note!(mimetype)
+        return if mimetype.to_s.split(";").first.to_s.strip.downcase == VOICE_NOTE_TYPE
+
+        raise ArgumentError, "a voice note must be an OGG with Opus (#{VOICE_NOTE_TYPE})"
       end
 
       def send_message_request(endpoint, body, idempotency_key)
