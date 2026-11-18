@@ -62,7 +62,7 @@ end
 | `url`, `api_key`, `session_id` | Required: OpenWA's API, its key (sent as `X-API-Key`) and the session that sends |
 | `to` | Required: a phone number (punctuation and `+` are dropped) or a chat id (`<digits>@c.us`) |
 | `text` | Required: the message, WhatsApp's markup included |
-| `files` | `[{ filename:, mimetype:, content: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent |
+| `files` | `[{ filename:, mimetype:, content:, voice_note: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent; `voice_note: true` sends an OGG with Opus (`audio/ogg`) as a voice note, and refuses any other type before sending |
 | `idempotency_key` | Defaults to `noticed-<notification id>`; an ephemeral notifier has none: pass one so a retried job doesn't send twice |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
 | `after_send` | Called once every message was sent, with OpenWA's answers (`[{ message_id:, timestamp:, chat_id: }, ...]`, in order; `chat_id` is the chat the message was sent to): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
@@ -72,13 +72,20 @@ Each option is a value, a lambda evaluated on the notification, or the name of a
 delivery methods (`after_send` also gets the answers).
 
 Without files it sends the text. With files it sends one message per file, the text as the last one's caption, so the
-chat shows it under the files without scrolling back: images (`image/*`) as images, MP4s (`video/mp4`) as videos that
-play in the chat, the rest as documents (other video formats included: WhatsApp can't be counted on to play them, and
-the gem converts nothing). OpenWA has no album: several images arrive as separate messages. Files are sent as base64,
-never by URL.
+chat shows it under the files without scrolling back:
 
-Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file): a retried job gets
-OpenWA's first answer replayed instead of sending again.
+- images (`image/*`) as images;
+- MP4s (`video/mp4`) as videos that play in the chat;
+- MP3, AAC/M4A, OGG and AMR (`audio/mpeg`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/amr`) as audio that plays in
+  the chat, or as a voice note with `voice_note: true` (OGG only);
+- the rest as documents, other video and audio formats included: WhatsApp can't be counted on to play them, and the
+  gem converts nothing.
+
+WhatsApp shows no caption on audio: when the last file is audio, the text follows the files as a message of its own.
+OpenWA has no album: several images arrive as separate messages. Files are sent as base64, never by URL.
+
+Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file, and `-text` for a
+text after audio): a retried job gets OpenWA's first answer replayed instead of sending again.
 
 `not_on_whatsapp` lets the app flag a recipient's number instead of failing the job every time. The error means
 WhatsApp can't resolve the recipient *for this session*, not always that the number has no WhatsApp: WhatsApp Web
@@ -179,6 +186,7 @@ client.send_text(chat_id, "Hello", idempotency_key: "welcome-42")
 # => { message_id: "...", timestamp: 1795021278, chat_id: "5561900000001@c.us" }
 client.send_image(chat_id, content: png_bytes, mimetype: "image/png", caption: "...")
 client.send_video(chat_id, content: mp4_bytes, caption: "...")            # an MP4 (H.264 and AAC)
+client.send_audio(chat_id, content: mp3_bytes, mimetype: "audio/mpeg")     # or voice_note: true, for an OGG with Opus
 client.send_document(chat_id, content: pdf_bytes, mimetype: "application/pdf", filename: "ticket.pdf", caption: "...")
 client.send_message(chat_id, text: "...", files: [...], idempotency_key: "...")
 Noticed::Openwa::Client.chat_id("+55 61 90000-0001") # => "5561900000001@c.us"

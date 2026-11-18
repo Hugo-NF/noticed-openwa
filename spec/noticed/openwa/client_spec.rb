@@ -205,6 +205,32 @@ RSpec.describe Noticed::Openwa::Client do
     end
   end
 
+  describe "#send_audio" do
+    context "with an MP3", vcr: { cassette_name: "send_audio/sent" } do
+      it "sends it as audio, without a caption" do
+        response = client.send_audio(chat_id, content: OpenwaSpecSupport::MP3, mimetype: "audio/mpeg",
+                                              idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+        expect(response).to include(message_id: a_kind_of(String), chat_id:)
+      end
+    end
+
+    context "with a voice note", vcr: { cassette_name: "send_audio/voice_note" } do
+      it "sends it as a voice note (ptt)" do
+        client.send_audio(chat_id, content: OpenwaSpecSupport::OGG, mimetype: "audio/ogg; codecs=opus", voice_note: true,
+                                   idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+        expect(a_request(:post, %r{/messages/send-audio\z}).with { |request| JSON.parse(request.body)["ptt"] == true })
+          .to have_been_made
+      end
+    end
+
+    it "refuses a voice note that isn't an OGG, before sending" do
+      expect { client.send_audio(chat_id, content: OpenwaSpecSupport::MP3, mimetype: "audio/mpeg", voice_note: true) }
+        .to raise_error(ArgumentError, /OGG/)
+    end
+  end
+
   describe "#send_document", vcr: { cassette_name: "send_document/sent" } do
     it "sends the bytes as base64, with the file name and caption" do
       response = client.send_document(chat_id, content: OpenwaSpecSupport::PDF, mimetype: "application/pdf",
@@ -252,6 +278,52 @@ RSpec.describe Noticed::Openwa::Client do
         expect(a_request(:post, %r{/messages/send-document\z}).with { |request|
           JSON.parse(request.body).values_at("mimetype", "filename") == [ "video/webm", "noticed-openwa.webm" ]
         }).to have_been_made
+      end
+    end
+
+    context "with an image and an audio file", vcr: { cassette_name: "send_message/image_and_audio" } do
+      let(:files) do
+        [ { content: OpenwaSpecSupport::PNG, mimetype: "image/png", filename: "noticed-openwa.png" },
+          { content: OpenwaSpecSupport::MP3, mimetype: "audio/mpeg", filename: "noticed-openwa.mp3" } ]
+      end
+
+      it "sends the files without a caption, then the text as a message of its own", :aggregate_failures do
+        key = OpenwaSpecSupport.idempotency_key
+        answers = client.send_message(chat_id, text: "noticed-openwa: send_message with audio", files:, idempotency_key: key)
+
+        expect(answers.size).to eq(3)
+        expect(a_request(:post, %r{/messages/send-image\z}).with(headers: { "Idempotency-Key" => "#{key}-1" }) { |request|
+          !JSON.parse(request.body).key?("caption")
+        }).to have_been_made
+        expect(a_request(:post, %r{/messages/send-audio\z}).with(headers: { "Idempotency-Key" => "#{key}-2" })).to have_been_made
+        expect(a_request(:post, %r{/messages/send-text\z}).with(headers: { "Idempotency-Key" => "#{key}-text" }) { |request|
+          JSON.parse(request.body)["text"] == "noticed-openwa: send_message with audio"
+        }).to have_been_made
+      end
+    end
+
+    # An audio type WhatsApp doesn't play goes as a document: OpenWA's answer to a document is send_document/sent's.
+    context "with an audio type WhatsApp doesn't play", vcr: { cassette_name: "send_document/sent" } do
+      let(:files) { [ { content: "wav bytes", mimetype: "audio/wav", filename: "noticed-openwa.wav" } ] }
+
+      it "sends it as a document, with the text as its caption" do
+        client.send_message(chat_id, text: "noticed-openwa: a WAV", files:, idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+        expect(a_request(:post, %r{/messages/send-document\z}).with { |request|
+          JSON.parse(request.body).values_at("mimetype", "caption") == [ "audio/wav", "noticed-openwa: a WAV" ]
+        }).to have_been_made
+      end
+    end
+
+    context "with a voice note that isn't an OGG" do
+      let(:files) do
+        [ { content: OpenwaSpecSupport::PNG, mimetype: "image/png", filename: "noticed-openwa.png" },
+          { content: OpenwaSpecSupport::MP3, mimetype: "audio/mpeg", filename: "noticed-openwa.mp3", voice_note: true } ]
+      end
+
+      it "refuses it before sending anything", :aggregate_failures do
+        expect { client.send_message(chat_id, text: "noticed-openwa: refused", files:) }.to raise_error(ArgumentError, /OGG/)
+        expect(a_request(:post, %r{/messages/})).not_to have_been_made
       end
     end
 
