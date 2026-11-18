@@ -220,16 +220,16 @@ RSpec.describe Noticed::Openwa::Client do
           { content: OpenwaSpecSupport::PNG, mimetype: "image/png", filename: "noticed-openwa-2.png" } ]
       end
 
-      it "sends one message per file, the text as the first one's caption", :aggregate_failures do
+      it "sends one message per file, the text as the last one's caption", :aggregate_failures do
         key = OpenwaSpecSupport.idempotency_key
         responses = client.send_message(chat_id, text: "noticed-openwa: send_message with files", files:, idempotency_key: key)
 
         expect(responses.size).to eq(2)
         expect(a_request(:post, %r{/messages/send-document\z}).with(headers: { "Idempotency-Key" => "#{key}-1" }) { |request|
-          JSON.parse(request.body)["caption"] == "noticed-openwa: send_message with files"
+          !JSON.parse(request.body).key?("caption")
         }).to have_been_made
         expect(a_request(:post, %r{/messages/send-image\z}).with(headers: { "Idempotency-Key" => "#{key}-2" }) { |request|
-          !JSON.parse(request.body).key?("caption")
+          JSON.parse(request.body)["caption"] == "noticed-openwa: send_message with files"
         }).to have_been_made
       end
     end
