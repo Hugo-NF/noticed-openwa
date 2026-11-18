@@ -82,15 +82,16 @@ module Noticed
         send_message_request("send-document", body, idempotency_key)
       end
 
-      # A text with its files: one message per file, the text as the first one's caption (images as images, the rest as
-      # documents), or the text alone without files. files: [{ content:, mimetype:, filename: }]; content may be a
+      # A text with its files: one message per file, the text as the last one's caption, where the chat shows it
+      # without scrolling back over the others (images as images, the rest as documents), or the text alone without
+      # files. files: [{ content:, mimetype:, filename: }]; content may be a
       # lambda, called only when that file is sent. Each message's idempotency key is the given one, suffixed with its
       # position when there are files. Returns OpenWA's answers.
       def send_message(chat_id, text:, files: [], idempotency_key: nil, link_preview: nil)
         return [ send_text(chat_id, text, link_preview:, idempotency_key:) ] if files.empty?
 
         files.each_with_index.map do |file, index|
-          send_file(chat_id, file, caption: index.zero? ? text : nil,
+          send_file(chat_id, file, caption: index == files.size - 1 ? text : nil,
                                    idempotency_key: idempotency_key && "#{idempotency_key}-#{index + 1}")
         end
       end

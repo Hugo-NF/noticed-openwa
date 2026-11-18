@@ -65,8 +65,9 @@ end
 Each option is a value, a lambda evaluated on the notification, or the name of a notifier method, as in noticed's own
 delivery methods (`after_send` also gets the answers).
 
-Without files it sends the text. With files it sends one message per file, the text as the first one's caption: images
-(`image/*`) as images, the rest as documents. Files are sent as base64, never by URL.
+Without files it sends the text. With files it sends one message per file, the text as the last one's caption, so the
+chat shows it under the files without scrolling back: images (`image/*`) as images, the rest as documents. OpenWA
+has no album: several images arrive as separate messages. Files are sent as base64, never by URL.
 
 Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file): a retried job gets
 OpenWA's first answer replayed instead of sending again.
