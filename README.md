@@ -75,12 +75,12 @@ OpenWA's first answer replayed instead of sending again.
 ```ruby
 client = Noticed::Openwa::Client.new(url:, api_key:, session_id:)
 
-client.check_number("+55 61 99110-1515")   # => { exists: true, whatsapp_id: "556191101515@c.us" }
+client.check_number("+55 61 90000-0001")   # => { exists: true, whatsapp_id: "556100000001@c.us" }
 client.send_text(chat_id, "Hello", idempotency_key: "welcome-42")
 client.send_image(chat_id, content: png_bytes, mimetype: "image/png", caption: "...")
 client.send_document(chat_id, content: pdf_bytes, mimetype: "application/pdf", filename: "ticket.pdf", caption: "...")
 client.send_message(chat_id, text: "...", files: [...], idempotency_key: "...")
-Noticed::Openwa::Client.chat_id("+55 61 99110-1515") # => "5561991101515@c.us"
+Noticed::Openwa::Client.chat_id("+55 61 90000-0001") # => "5561900000001@c.us"
 ```
 
 The chat id WhatsApp holds can differ from a number's digits (Brazilian mobiles may be held without their ninth digit):
