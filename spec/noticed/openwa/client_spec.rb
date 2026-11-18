@@ -196,6 +196,15 @@ RSpec.describe Noticed::Openwa::Client do
     end
   end
 
+  describe "#send_video", vcr: { cassette_name: "send_video/sent" } do
+    it "sends the bytes as base64, with the caption" do
+      response = client.send_video(chat_id, content: OpenwaSpecSupport::MP4, caption: "noticed-openwa: send_video",
+                                            idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+      expect(response).to include(message_id: a_kind_of(String), timestamp: a_kind_of(Integer), chat_id:)
+    end
+  end
+
   describe "#send_document", vcr: { cassette_name: "send_document/sent" } do
     it "sends the bytes as base64, with the file name and caption" do
       response = client.send_document(chat_id, content: OpenwaSpecSupport::PDF, mimetype: "application/pdf",
@@ -211,6 +220,38 @@ RSpec.describe Noticed::Openwa::Client do
       it "sends the text alone" do
         expect(client.send_message(chat_id, text: "noticed-openwa: send_message", idempotency_key: OpenwaSpecSupport.idempotency_key).size)
           .to eq(1)
+      end
+    end
+
+    context "with an image and a video", vcr: { cassette_name: "send_message/image_and_video" } do
+      let(:files) do
+        [ { content: OpenwaSpecSupport::PNG, mimetype: "image/png", filename: "noticed-openwa.png" },
+          { content: OpenwaSpecSupport::MP4, mimetype: "video/mp4", filename: "noticed-openwa.mp4" } ]
+      end
+
+      it "sends the MP4 as a video, with the text as its caption", :aggregate_failures do
+        key = OpenwaSpecSupport.idempotency_key
+        client.send_message(chat_id, text: "noticed-openwa: send_message with a video", files:, idempotency_key: key)
+
+        expect(a_request(:post, %r{/messages/send-image\z}).with(headers: { "Idempotency-Key" => "#{key}-1" }) { |request|
+          !JSON.parse(request.body).key?("caption")
+        }).to have_been_made
+        expect(a_request(:post, %r{/messages/send-video\z}).with(headers: { "Idempotency-Key" => "#{key}-2" }) { |request|
+          JSON.parse(request.body).values_at("mimetype", "caption") == [ "video/mp4", "noticed-openwa: send_message with a video" ]
+        }).to have_been_made
+      end
+    end
+
+    # A video that isn't an MP4 goes as a document: OpenWA's answer to a document is send_document/sent's.
+    context "with a video that isn't an MP4", vcr: { cassette_name: "send_document/sent" } do
+      let(:files) { [ { content: "webm bytes", mimetype: "video/webm", filename: "noticed-openwa.webm" } ] }
+
+      it "sends it as a document" do
+        client.send_message(chat_id, text: "noticed-openwa: a WebM", files:, idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+        expect(a_request(:post, %r{/messages/send-document\z}).with { |request|
+          JSON.parse(request.body).values_at("mimetype", "filename") == [ "video/webm", "noticed-openwa.webm" ]
+        }).to have_been_made
       end
     end
 

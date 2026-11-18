@@ -44,6 +44,8 @@ module OpenwaSpecSupport
   # A second image, a red pixel, for messages with more than one.
   RED_PNG = [ "89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c49444154789c63f8cfc000" \
               "0003010100c9fe92ef0000000049454e44ae426082" ].pack("H*")
+  # One second of red at 64x64, H.264 and AAC: what WhatsApp plays as a video.
+  MP4 = File.binread(File.expand_path("fixtures/files/video.mp4", __dir__)).freeze
   PDF = "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" \
         "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
 
