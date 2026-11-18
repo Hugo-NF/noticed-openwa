@@ -231,6 +231,21 @@ RSpec.describe Noticed::Openwa::Client do
     end
   end
 
+  describe "#send_location" do
+    context "with a place", vcr: { cassette_name: "send_location/sent" } do
+      it "sends a map pin with its description and address" do
+        response = client.send_location(chat_id, latitude: -15.7975, longitude: -47.8919, description: "noticed-openwa: send_location",
+                                                 address: "Brasília, DF", idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+        expect(response).to include(message_id: a_kind_of(String), chat_id:)
+      end
+    end
+
+    it "requires the latitude and the longitude" do
+      expect { client.send_location(chat_id, latitude: nil, longitude: -47.8919) }.to raise_error(ArgumentError, /required/)
+    end
+  end
+
   describe "#send_document", vcr: { cassette_name: "send_document/sent" } do
     it "sends the bytes as base64, with the file name and caption" do
       response = client.send_document(chat_id, content: OpenwaSpecSupport::PDF, mimetype: "application/pdf",

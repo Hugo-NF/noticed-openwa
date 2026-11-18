@@ -24,6 +24,7 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
                       to: -> { params[:to] },
                       text: -> { params[:text] },
                       files: -> { params[:files] },
+                      location: -> { params[:location] },
                       idempotency_key: -> { params[:key] }
 
       def keep_answers(event, answers) = params[:sent] << [ event, answers ]
@@ -96,6 +97,21 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
       expect(a_request(:post, %r{/messages/send-text\z}).with(headers: { "Idempotency-Key" => "#{key}-chat2" }) { |request|
         JSON.parse(request.body)["chatId"] == OpenwaSpecSupport.group
       }).to have_been_made.once
+    end
+  end
+
+  # The location is sent as by deliver_by :openwa (Noticed::Openwa::Delivery): its answer is delivery_method/location's.
+  describe "a location", vcr: { cassette_name: "delivery_method/location" } do
+    let(:params) do
+      { to: OpenwaSpecSupport.number, text: "noticed-openwa: bulk delivery method with a location", key:, sent: [],
+        location: { latitude: -15.7975, longitude: -47.8919, description: "noticed-openwa: the place", address: "Brasília, DF" } }
+    end
+    let(:overrides) { { after_send: :keep_answers } }
+
+    it "sends the pin, then the text, both answers in after_send's" do
+      delivery
+
+      expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecBulkNotifier), [ answer, answer ] ] ])
     end
   end
 

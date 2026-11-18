@@ -13,17 +13,29 @@ module Noticed
 
       private
 
-      # OpenWA's answers for the message sent to `to`, a phone number or a chat id. A chat WhatsApp can't resolve goes to
-      # `not_on_whatsapp` when the app gives one, instead of failing the job (retrying never helps): nothing was sent, no
-      # answers. Without it, the error is raised.
+      # OpenWA's answers for the message sent to `to`, a phone number or a chat id: the location first, when there's
+      # one (a pin with its own description), then the text and the files. A chat WhatsApp can't resolve goes to
+      # `not_on_whatsapp` when the app gives one, instead of failing the job: nothing more is sent. Without it, the
+      # error is raised.
       def send_to(to, idempotency_key)
         chat_id = Client.chat_id(to)
-        client.send_message(chat_id, text: evaluate_option(:text), files: Array(evaluate_option(:files)), idempotency_key:)
+        answers = send_location_to(chat_id, idempotency_key)
+        answers + client.send_message(chat_id, text: evaluate_option(:text), files: Array(evaluate_option(:files)),
+                                               idempotency_key:)
       rescue NotOnWhatsappError => e
         raise unless config[:not_on_whatsapp]
 
         run_callback(:not_on_whatsapp, chat_id, e)
         []
+      end
+
+      # The pin of the `location` option, before the message: none without one.
+      def send_location_to(chat_id, idempotency_key)
+        location = evaluate_option(:location)
+        return [] unless location
+
+        location = location.to_h.slice(:latitude, :longitude, :description, :address)
+        [ client.send_location(chat_id, **location, idempotency_key: idempotency_key && "#{idempotency_key}-location") ]
       end
 
       # evaluate_option passes no arguments: as noticed's own callbacks (fcm's invalid_token), a lambda is run on the

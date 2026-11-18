@@ -63,6 +63,7 @@ end
 | `to` | Required: a phone number (punctuation and `+` are dropped) or a chat id (`<digits>@c.us`) |
 | `text` | Required: the message, WhatsApp's markup included |
 | `files` | `[{ filename:, mimetype:, content:, voice_note: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent; `voice_note: true` sends an OGG with Opus (`audio/ogg`) as a voice note, and refuses any other type before sending |
+| `location` | `{ latitude:, longitude:, description:, address: }`: a map pin (`description` is the place's name, `address` the line under it), sent **first**, before the text and the files, with its key suffixed `-location` |
 | `idempotency_key` | Defaults to `noticed-<notification id>`; an ephemeral notifier has none: pass one so a retried job doesn't send twice |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
 | `after_send` | Called once every message was sent, with OpenWA's answers (`[{ message_id:, timestamp:, chat_id: }, ...]`, in order; `chat_id` is the chat the message was sent to): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
@@ -187,6 +188,7 @@ client.send_text(chat_id, "Hello", idempotency_key: "welcome-42")
 client.send_image(chat_id, content: png_bytes, mimetype: "image/png", caption: "...")
 client.send_video(chat_id, content: mp4_bytes, caption: "...")            # an MP4 (H.264 and AAC)
 client.send_audio(chat_id, content: mp3_bytes, mimetype: "audio/mpeg")     # or voice_note: true, for an OGG with Opus
+client.send_location(chat_id, latitude: -15.79, longitude: -47.89, description: "Pickup point", address: "...")
 client.send_document(chat_id, content: pdf_bytes, mimetype: "application/pdf", filename: "ticket.pdf", caption: "...")
 client.send_message(chat_id, text: "...", files: [...], idempotency_key: "...")
 Noticed::Openwa::Client.chat_id("+55 61 90000-0001") # => "5561900000001@c.us"

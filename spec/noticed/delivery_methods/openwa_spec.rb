@@ -20,6 +20,7 @@ RSpec.describe Noticed::DeliveryMethods::Openwa do
                  to: -> { params[:to] },
                  text: -> { params[:text] },
                  files: -> { params[:files] },
+                 location: -> { params[:location] },
                  idempotency_key: -> { params[:key] }
 
       def keep_answers(notification, answers) = params[:sent] << [ notification, answers ]
@@ -105,6 +106,41 @@ RSpec.describe Noticed::DeliveryMethods::Openwa do
         expect { delivery }.to raise_error(Noticed::Openwa::RetryableError)
         expect(params[:sent]).to be_empty
       end
+    end
+  end
+
+  describe "a location without files", vcr: { cassette_name: "delivery_method/location" } do
+    let(:params) do
+      { to: OpenwaSpecSupport.number, text: "noticed-openwa: delivery method with a location", key:,
+        location: { latitude: -15.7975, longitude: -47.8919, description: "noticed-openwa: the place", address: "Brasília, DF" } }
+    end
+
+    it "sends the pin with its own description, then the text as a message of its own", :aggregate_failures do
+      expect(delivery.size).to eq(2)
+      expect(a_request(:post, %r{/messages/send-location\z}).with(headers: { "Idempotency-Key" => "#{key}-location" }) { |request|
+        JSON.parse(request.body).values_at("description", "address") == [ "noticed-openwa: the place", "Brasília, DF" ]
+      }).to have_been_made.once
+      expect(a_request(:post, %r{/messages/send-text\z}).with(headers: { "Idempotency-Key" => key }) { |request|
+        JSON.parse(request.body)["text"] == params[:text]
+      }).to have_been_made.once
+    end
+  end
+
+  describe "a location with a file", vcr: { cassette_name: "delivery_method/location_and_file" } do
+    let(:params) do
+      { to: OpenwaSpecSupport.number, text: "noticed-openwa: delivery method with a location and a file", key:,
+        location: { latitude: -15.7975, longitude: -47.8919, description: "noticed-openwa: the place", address: "Brasília, DF" },
+        files: [ { content: OpenwaSpecSupport::PDF, mimetype: "application/pdf", filename: "noticed-openwa.pdf" } ] }
+    end
+
+    it "sends the pin first, with its own description, then the file with the text", :aggregate_failures do
+      expect(delivery.size).to eq(2)
+      expect(a_request(:post, %r{/messages/send-location\z}).with(headers: { "Idempotency-Key" => "#{key}-location" }) { |request|
+        JSON.parse(request.body)["description"] == "noticed-openwa: the place"
+      }).to have_been_made.once
+      expect(a_request(:post, %r{/messages/send-document\z}).with(headers: { "Idempotency-Key" => "#{key}-1" }) { |request|
+        JSON.parse(request.body)["caption"] == params[:text]
+      }).to have_been_made.once
     end
   end
 
