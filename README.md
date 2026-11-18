@@ -60,15 +60,28 @@ end
 | `files` | `[{ filename:, mimetype:, content: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent |
 | `idempotency_key` | Defaults to `noticed-<notification id>` |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
+| `after_send` | Called once every message was sent, with OpenWA's answers (`[{ "messageId" =>, "timestamp" => }, ...]`, in order): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
 
 Each option is a value, a lambda evaluated on the notification, or the name of a notifier method, as in noticed's own
-delivery methods.
+delivery methods (`after_send` also gets the answers).
 
 Without files it sends the text. With files it sends one message per file, the text as the first one's caption: images
 (`image/*`) as images, the rest as documents. Files are sent as base64, never by URL.
 
 Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file): a retried job gets
 OpenWA's first answer replayed instead of sending again.
+
+`after_send` lets the app match the webhook's receipts (`Event#message_id`, "Webhook deliveries") to the notification
+that sent the message, keeping the ids in a column of its own (here a JSON array, on Postgres):
+
+```ruby
+deliver_by :openwa, # ...
+           after_send: ->(answers) { update!(openwa_message_ids: answers.pluck("messageId")) }
+
+# On a message.ack delivery:
+notification = Noticed::Notification.find_by("openwa_message_ids @> ?", [ event.message_id ].to_json)
+notification&.mark_as_read! if event.status == "read"
+```
 
 ## The client
 
