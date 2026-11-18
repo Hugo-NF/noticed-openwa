@@ -58,7 +58,7 @@ end
 | `to` | Required: a phone number (punctuation and `+` are dropped) or a chat id (`<digits>@c.us`) |
 | `text` | Required: the message, WhatsApp's markup included |
 | `files` | `[{ filename:, mimetype:, content: }]`; `content` is the bytes or a lambda returning them, called only when that file is sent |
-| `idempotency_key` | Defaults to `noticed-<notification id>` |
+| `idempotency_key` | Defaults to `noticed-<notification id>`; an ephemeral notifier has none: pass one so a retried job doesn't send twice |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
 | `after_send` | Called once every message was sent, with OpenWA's answers (`[{ "messageId" =>, "timestamp" => }, ...]`, in order): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
 
@@ -82,6 +82,35 @@ deliver_by :openwa, # ...
 notification = Noticed::Notification.find_by("openwa_message_ids @> ?", [ event.message_id ].to_json)
 notification&.mark_as_read! if event.status == "read"
 ```
+
+### noticed's options
+
+noticed handles these for every delivery method, `:openwa` included
+([noticed's README](https://github.com/excid3/noticed#readme)):
+
+| Option | |
+|---|---|
+| `if`, `unless` | Skip the delivery when falsey (`if`) or truthy (`unless`), checked by the job when it runs |
+| `wait`, `wait_until`, `queue`, `priority` | The job's delay, time, queue and priority |
+| `before_enqueue` | `throw :abort` to not enqueue the job at all |
+| `class` | The name of a class to deliver with instead, such as a subclass of `Noticed::DeliveryMethods::Openwa` |
+
+Lambdas are evaluated on the notification (`after_send`'s with the answers). A notification has noticed's `t`, so a key
+starting with a period is looked up under `notifiers.<notifier>.notification`:
+
+```ruby
+class BookingConfirmedNotifier < Noticed::Event
+  deliver_by :openwa,
+             # url:, api_key:, session_id: and to: as above
+             text: -> { t(".message") }, # notifiers.booking_confirmed_notifier.notification.message
+             if: -> { recipient.whatsapp_opt_in? },
+             wait: 5.minutes,
+             queue: :notifications
+end
+```
+
+Ephemeral notifiers (`Noticed::Ephemeral`) deliver the same way, without saving anything: see `idempotency_key`. Their
+notification isn't saved either, so `after_send` keeps the answers elsewhere (on the `record`, for example).
 
 ## The client
 
