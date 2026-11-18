@@ -3,13 +3,14 @@
 module Noticed
   module DeliveryMethods
     # deliver_by :openwa, url:, api_key:, session_id:, to:, text:, and optionally files:, idempotency_key:, ca_file:,
-    # after_send:
+    # after_send:, not_on_whatsapp:
     #
     # Each option is a value, a lambda (evaluated on the notification) or the name of a notifier method. `to` is a phone
     # number or a chat id; `files` is [{ content:, mimetype:, filename: }] (content may be a lambda); the idempotency key
     # defaults to the notification's, so a retried job never sends a message twice. `after_send` is called once every
     # message was sent, with OpenWA's answers, so the app can keep their ids and match the webhook's receipts to the
-    # notification.
+    # notification. `not_on_whatsapp` is called instead of failing the job when WhatsApp can't resolve the recipient, with
+    # the chat id and the error, so the app can clear or flag the number.
     class Openwa < DeliveryMethod
       include Noticed::Openwa::Delivery
 
@@ -17,7 +18,7 @@ module Noticed
 
       def deliver
         answers = send_to(evaluate_option(:to), evaluate_option(:idempotency_key) || default_idempotency_key)
-        after_send(answers)
+        run_callback(:after_send, answers) unless answers.empty?
         answers
       end
 
@@ -29,16 +30,7 @@ module Noticed
 
       private
 
-      # evaluate_option passes no arguments: like noticed's own callbacks (fcm's invalid_token), a lambda is run on the
-      # notification with the answers, and a notifier method gets the notification and the answers.
-      def after_send(answers)
-        callback = config[:after_send]
-        if callback.respond_to?(:call)
-          notification.instance_exec(answers, &callback)
-        elsif callback.is_a?(Symbol) && event.respond_to?(callback, true)
-          event.send(callback, notification, answers)
-        end
-      end
+      def callback_record = notification
     end
   end
 end

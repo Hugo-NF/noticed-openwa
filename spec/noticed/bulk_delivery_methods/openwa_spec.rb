@@ -27,6 +27,8 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
                       idempotency_key: -> { params[:key] }
 
       def keep_answers(event, answers) = params[:sent] << [ event, answers ]
+
+      def keep_missing(event, chat_id, error) = params[:missing] << [ event, chat_id, error ]
     end
     stub_const("OpenwaSpecBulkNotifier", notifier)
   end
@@ -162,6 +164,42 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
       it "isn't called", :aggregate_failures do
         expect { delivery }.to raise_error(Noticed::Openwa::RetryableError)
         expect(params[:sent]).to be_empty
+      end
+    end
+  end
+
+  describe "a list with a number not on WhatsApp", vcr: { cassette_name: "bulk_delivery_method/not_on_whatsapp" } do
+    let(:params) do
+      { to: [ OpenwaSpecSupport.number_not_on_whatsapp, OpenwaSpecSupport.number ], key:, sent: [], missing: [],
+        text: "noticed-openwa: bulk delivery method, one chat not on WhatsApp" }
+    end
+
+    # The guard: the number must not be on WhatsApp, or the message would reach a real account.
+    before do
+      raise "#{OpenwaSpecSupport.number_not_on_whatsapp} is on WhatsApp" if
+        OpenwaSpecSupport.client.check_number(OpenwaSpecSupport.number_not_on_whatsapp)[:exists]
+    end
+
+    context "with not_on_whatsapp" do
+      let(:overrides) { { not_on_whatsapp: :keep_missing, after_send: :keep_answers } }
+
+      it "hands it that chat, on the event, and still sends to the others", :aggregate_failures do
+        delivery
+
+        expect(params[:missing]).to match([ [ an_instance_of(OpenwaSpecBulkNotifier),
+                                              Noticed::Openwa::Client.chat_id(OpenwaSpecSupport.number_not_on_whatsapp),
+                                              an_instance_of(Noticed::Openwa::NotOnWhatsappError) ] ])
+        expect(a_request(:post, %r{/messages/send-text\z}).with(headers: { "Idempotency-Key" => "#{key}-chat2" }))
+          .to have_been_made.once
+        expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecBulkNotifier), [ answer ] ] ])
+      end
+    end
+
+    context "without not_on_whatsapp" do
+      it "raises the error, before the chats after it", :aggregate_failures do
+        expect { delivery }.to raise_error(Noticed::Openwa::NotOnWhatsappError)
+        expect(a_request(:post, %r{/messages/send-text\z}).with(headers: { "Idempotency-Key" => "#{key}-chat2" }))
+          .not_to have_been_made
       end
     end
   end
