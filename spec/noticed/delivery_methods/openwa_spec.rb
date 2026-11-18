@@ -2,10 +2,11 @@
 
 RSpec.describe Noticed::DeliveryMethods::Openwa do
   subject(:delivery) do
-    described_class.new.perform(:openwa, "OpenwaSpecNotifier::Notification", recipient: Object.new, params:)
+    described_class.new.perform(:openwa, "OpenwaSpecNotifier::Notification", recipient: Object.new, params:, overrides:)
   end
 
   let(:key) { OpenwaSpecSupport.idempotency_key }
+  let(:overrides) { {} }
 
   before do
     notifier = Class.new(Noticed::Ephemeral) do
@@ -20,6 +21,8 @@ RSpec.describe Noticed::DeliveryMethods::Openwa do
                  text: -> { params[:text] },
                  files: -> { params[:files] },
                  idempotency_key: -> { params[:key] }
+
+      def keep_answers(notification, answers) = params[:sent] << [ notification, answers ]
     end
     stub_const("OpenwaSpecNotifier", notifier)
   end
@@ -50,6 +53,53 @@ RSpec.describe Noticed::DeliveryMethods::Openwa do
       expect(a_request(:post, %r{/messages/send-document\z}).with(headers: { "Idempotency-Key" => "#{key}-1" }) { |request|
         JSON.parse(request.body).values_at("caption", "filename") == [ params[:text], "noticed-openwa.pdf" ]
       }).to have_been_made
+    end
+  end
+
+  describe "after_send" do
+    let(:params) { { to: OpenwaSpecSupport.number, text: "noticed-openwa: delivery method", key:, sent: [] } }
+    let(:overrides) { { after_send: ->(answers) { params[:sent] << [ self, answers ] } } }
+    let(:answer) { a_hash_including("messageId" => a_kind_of(String), "timestamp" => a_kind_of(Integer)) }
+
+    context "with a text", vcr: { cassette_name: "delivery_method/text" } do
+      it "is called once, on the notification, with OpenWA's answer" do
+        delivery
+
+        expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecNotifier::Notification), [ answer ] ] ])
+      end
+    end
+
+    context "with a text and a file", vcr: { cassette_name: "delivery_method/file" } do
+      let(:params) do
+        { to: OpenwaSpecSupport.number, text: "noticed-openwa: delivery method with a file", key:, sent: [],
+          files: [ { content: OpenwaSpecSupport::PDF, mimetype: "application/pdf", filename: "noticed-openwa.pdf" } ] }
+      end
+
+      it "is called once, with the file's answer" do
+        delivery
+
+        expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecNotifier::Notification), [ answer ] ] ])
+      end
+    end
+
+    context "with a notifier method's name", vcr: { cassette_name: "delivery_method/text" } do
+      let(:overrides) { { after_send: :keep_answers } }
+
+      it "calls it with the notification and OpenWA's answers" do
+        delivery
+
+        expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecNotifier::Notification), [ answer ] ] ])
+      end
+    end
+
+    context "when the send fails",
+            vcr: { cassette_name: "templates/send_text", record: :none,
+                   erb: { code: 503, message: "Service Unavailable",
+                          body: JSON.generate(statusCode: 503, message: "WhatsApp did not answer") } } do
+      it "isn't called", :aggregate_failures do
+        expect { delivery }.to raise_error(Noticed::Openwa::RetryableError)
+        expect(params[:sent]).to be_empty
+      end
     end
   end
 
