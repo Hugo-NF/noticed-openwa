@@ -34,6 +34,10 @@ module Noticed
     # OpenWA refused the request itself (an invalid number, file or body).
     class RequestError < Error; end
 
+    # The message a send quotes (quoted_message_id) isn't one OpenWA can find (404): nothing was sent. The client's
+    # sends send it again without the quote, so it only reaches the app from a call that can't.
+    class QuotedMessageNotFoundError < RequestError; end
+
     # A webhook delivery whose `X-OpenWA-Signature` is missing, malformed or not the body's: don't trust it.
     class InvalidSignatureError < Error; end
   end

@@ -124,6 +124,38 @@ RSpec.describe Noticed::Openwa::Client do
     end
   end
 
+  describe "#send_text as a reply" do
+    context "when the quoted message is in the chat", vcr: { cassette_name: "send_text/reply" } do
+      it "quotes it" do
+        quoted = client.send_text(chat_id, "noticed-openwa: the message replied to", idempotency_key: OpenwaSpecSupport.idempotency_key)
+        client.send_text(chat_id, "noticed-openwa: the reply", quoted_message_id: quoted[:message_id],
+                                  idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+        expect(a_request(:post, %r{/messages/send-text\z}).with { |request|
+          JSON.parse(request.body)["quotedMessageId"] == quoted[:message_id]
+        }).to have_been_made.once
+      end
+    end
+
+    # An id OpenWA can't find: it sends nothing and releases the key, and the client sends the message unquoted.
+    context "when OpenWA can't find the quoted message", vcr: { cassette_name: "send_text/reply_not_found" } do
+      let(:missing_id) { "true_100000000000001@lid_3EB0000000000000000000_out" }
+
+      it "sends it again, without the quote and with the same key", :aggregate_failures do
+        key = OpenwaSpecSupport.idempotency_key
+        answer = client.send_text(chat_id, "noticed-openwa: a reply to nothing", quoted_message_id: missing_id, idempotency_key: key)
+
+        expect(answer).to include(message_id: a_kind_of(String))
+        expect(a_request(:post, %r{/messages/send-text\z}).with(headers: { "Idempotency-Key" => key }) { |request|
+          JSON.parse(request.body)["quotedMessageId"] == missing_id
+        }).to have_been_made.once
+        expect(a_request(:post, %r{/messages/send-text\z}).with(headers: { "Idempotency-Key" => key }) { |request|
+          !JSON.parse(request.body).key?("quotedMessageId")
+        }).to have_been_made.once
+      end
+    end
+  end
+
   describe "#send_text to a number not on WhatsApp", vcr: { cassette_name: "send_text/not_on_whatsapp" } do
     it "raises a not on WhatsApp error", :aggregate_failures do
       # The guard: the number must not be on WhatsApp, or the message would reach a real account.

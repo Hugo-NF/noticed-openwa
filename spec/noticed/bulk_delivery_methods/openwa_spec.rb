@@ -25,6 +25,7 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
                       text: -> { params[:text] },
                       files: -> { params[:files] },
                       location: -> { params[:location] },
+                      reply_to: -> { params[:reply_to] },
                       idempotency_key: -> { params[:key] }
 
       def keep_answers(event, answers) = params[:sent] << [ event, answers ]
@@ -112,6 +113,17 @@ RSpec.describe Noticed::BulkDeliveryMethods::Openwa do
       delivery
 
       expect(params[:sent]).to match([ [ an_instance_of(OpenwaSpecBulkNotifier), [ answer, answer ] ] ])
+    end
+  end
+
+  describe "a reply to a list of chats" do
+    let(:params) do
+      { to: [ OpenwaSpecSupport.number, OpenwaSpecSupport.group ], text: "noticed-openwa: refused", key:, reply_to: "an id" }
+    end
+
+    it "is refused before sending: a message is in one chat", :aggregate_failures do
+      expect { delivery }.to raise_error(ArgumentError, /one chat/)
+      expect(a_request(:post, %r{/messages/})).not_to have_been_made
     end
   end
 
