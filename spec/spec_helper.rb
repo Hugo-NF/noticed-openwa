@@ -27,7 +27,8 @@ end
   "OPENWA_WEBHOOK_SECRET" => "openwa_webhook_secret_1234567890",
   "OPENWA_TEST_WEBHOOK_URL" => "https://webhook.test/noticed-openwa",
   "OPENWA_SESSION_PHONE" => "5561900000003",
-  "OPENWA_SESSION_PUSH_NAME" => "noticed-openwa test"
+  "OPENWA_SESSION_PUSH_NAME" => "noticed-openwa test",
+  "OPENWA_TEST_GROUP" => "120363000000000001@g.us"
 }.each { |key, value| ENV[key] = value if ENV[key].to_s.empty? }
 
 require_relative "support/dummy_app"
@@ -40,6 +41,9 @@ module OpenwaSpecSupport
   # A 1x1 PNG and a one-page PDF: what the sends carry.
   PNG = [ "89504e470d0a1a0a0000000d4948445200000001000000010806000000" \
           "1f15c4890000000d49444154789c636060606000000005000157a7e5d00000000049454e44ae426082" ].pack("H*")
+  # A second image, a red pixel, for messages with more than one.
+  RED_PNG = [ "89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c49444154789c63f8cfc000" \
+              "0003010100c9fe92ef0000000049454e44ae426082" ].pack("H*")
   PDF = "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n" \
         "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
 
@@ -55,6 +59,9 @@ module OpenwaSpecSupport
   def number = ENV.fetch("OPENWA_TEST_NUMBER")
 
   def number_not_on_whatsapp = ENV.fetch("OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP")
+
+  # A WhatsApp group of the maintainer's, with their own number in it: it receives the bulk delivery's test messages.
+  def group = ENV.fetch("OPENWA_TEST_GROUP")
 
   def digits(value) = value.to_s.delete("^0-9")
 
@@ -107,6 +114,7 @@ VCR.configure do |config|
     "https://openwa-webhook-url.placeholder" => -> { ENV["OPENWA_TEST_WEBHOOK_URL"] },
     "openwa-session-phone" => -> { OpenwaSpecSupport.digits(ENV["OPENWA_SESSION_PHONE"]) },
     "openwa-push-name" => -> { ENV["OPENWA_SESSION_PUSH_NAME"] },
+    "openwa-group-id" => -> { ENV["OPENWA_TEST_GROUP"].to_s.split("@").first },
     "openwa-number-a" => -> { OpenwaSpecSupport.digits(ENV["OPENWA_TEST_NUMBER"]) },
     "openwa-whatsapp-id-a" => -> { OpenwaSpecSupport.without_ninth_digit(ENV["OPENWA_TEST_NUMBER"]) },
     "openwa-number-b" => -> { OpenwaSpecSupport.digits(ENV["OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP"]) },
