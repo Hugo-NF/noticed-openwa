@@ -3,13 +3,14 @@
 module Noticed
   module BulkDeliveryMethods
     # bulk_deliver_by :openwa, url:, api_key:, session_id:, to:, text:, and optionally files:, idempotency_key:, ca_file:,
-    # after_send:
+    # after_send:, not_on_whatsapp:
     #
     # Once per event, whatever its recipients: the message goes to `to`, a phone number or a chat id (a group's
     # included), or to each of a list of them. The options are those of `deliver_by :openwa`, evaluated on the event.
     # The idempotency key defaults to the event's; with a list, each chat's is suffixed by its position, so a retry
     # replays the chats already sent instead of sending them twice. `after_send` is called once every message was sent,
-    # with OpenWA's answers for every chat, in order.
+    # with OpenWA's answers for every chat, in order. `not_on_whatsapp` gets each chat WhatsApp can't resolve, with the
+    # error, and the other chats are still sent.
     class Openwa < BulkDeliveryMethod
       include Noticed::Openwa::Delivery
 
@@ -23,7 +24,7 @@ module Noticed
         else
           send_to(to, key)
         end
-        after_send(answers) unless answers.empty?
+        run_callback(:after_send, answers) unless answers.empty?
         answers
       end
 
@@ -36,16 +37,7 @@ module Noticed
 
       private
 
-      # As noticed's own callbacks do, a lambda is run on the event with the answers, and a notifier method gets the
-      # event and the answers.
-      def after_send(answers)
-        callback = config[:after_send]
-        if callback.respond_to?(:call)
-          event.instance_exec(answers, &callback)
-        elsif callback.is_a?(Symbol) && event.respond_to?(callback, true)
-          event.send(callback, event, answers)
-        end
-      end
+      def callback_record = event
     end
   end
 end

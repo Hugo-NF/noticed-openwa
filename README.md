@@ -61,6 +61,7 @@ end
 | `idempotency_key` | Defaults to `noticed-<notification id>`; an ephemeral notifier has none: pass one so a retried job doesn't send twice |
 | `ca_file` | A CA bundle to trust, for an OpenWA behind a private CA's certificate |
 | `after_send` | Called once every message was sent, with OpenWA's answers (`[{ "messageId" =>, "timestamp" => }, ...]`, in order): a lambda run on the notification with the answers, or a notifier method's name, called with the notification and the answers. Not called when a send fails |
+| `not_on_whatsapp` | Called instead of failing the job when WhatsApp can't resolve the recipient (`NotOnWhatsappError`; retrying right away gets the same answer), with the chat id and the error: a lambda run on the notification, or a notifier method's name, called with the notification, the chat id and the error. Without it, the error is raised |
 
 Each option is a value, a lambda evaluated on the notification, or the name of a notifier method, as in noticed's own
 delivery methods (`after_send` also gets the answers).
@@ -71,6 +72,18 @@ has no album: several images arrive as separate messages. Files are sent as base
 
 Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file): a retried job gets
 OpenWA's first answer replayed instead of sending again.
+
+`not_on_whatsapp` lets the app flag a recipient's number instead of failing the job every time. The error means
+WhatsApp can't resolve the recipient *for this session*, not always that the number has no WhatsApp: WhatsApp Web
+sometimes won't give a number's id (its LID) to a session that never had a chat with it, and OpenWA answers the two
+cases alike (a known whatsapp-web.js limitation). Once the recipient messages the session, sends to them work. So don't
+drop the number: flag it, offer another channel (an OTP by SMS, say), or check it (`Client#check_number`, which can
+still find it):
+
+```ruby
+deliver_by :openwa, # ...
+           not_on_whatsapp: ->(chat_id, error) { recipient.update!(whatsapp_unreachable_at: Time.current) }
+```
 
 `after_send` lets the app match the webhook's receipts (`Event#message_id`, "Webhook deliveries") to the notification
 that sent the message, keeping the ids in a column of its own (here a JSON array, on Postgres):
@@ -138,6 +151,7 @@ noticed's (`if`, `unless`, `wait`, `queue`, ...). The differences:
 | `to` | Required: a phone number or a chat id, a group's included (`<digits>@g.us`), or a list of them: one message each, in order, in the same job. An empty list sends nothing |
 | `idempotency_key` | Defaults to `noticed-event-<event id>` (apart from a notification's `noticed-<id>`, which can share the number); with a list, each chat's is suffixed `-chat1`, `-chat2`, ..., so a job retried after a failure halfway replays the chats already sent. An ephemeral notifier's event has none: pass one |
 | `after_send` | Called once every message was sent, with OpenWA's answers for every chat, in order: a lambda run on the event with the answers, or a notifier method's name, called with the event and the answers |
+| `not_on_whatsapp` | Called for each chat WhatsApp can't resolve, with the chat id and the error: a lambda run on the event, or a notifier method's name, called with the event, the chat id and the error. The other chats of a list are still sent; without it, the error is raised and the chats after it aren't |
 
 A group's chat id is what WhatsApp holds for it: the session must be in the group, and the client sends to it as to any
 other chat. The delivery method's retries go on its own load hook:
@@ -162,7 +176,8 @@ Noticed::Openwa::Client.chat_id("+55 61 90000-0001") # => "5561900000001@c.us"
 ```
 
 The chat id WhatsApp holds can differ from a number's digits (Brazilian mobiles may be held without their ninth digit):
-send to the `whatsapp_id` the check returns.
+send to the `whatsapp_id` the check returns. A number the check finds can still fail to send with `NotOnWhatsappError`,
+when WhatsApp Web won't resolve it for the session ("Errors").
 
 `send_text` and `send_message` take `link_preview:` (`true` or `false`) for a URL in the text. Left out, it isn't
 sent, and the session's own `linkPreview` config decides (OpenWA's default otherwise: a preview on whatsapp-web.js,
@@ -265,7 +280,7 @@ Their messages name the call, the status and OpenWA's reason, with any phone num
 | Error | When | Retry? |
 |---|---|---|
 | `AuthenticationError` | `401`, `403`: the key is missing, unknown, revoked or out of its scope | No |
-| `NotOnWhatsappError` | WhatsApp can't resolve the recipient | No |
+| `NotOnWhatsappError` | WhatsApp can't resolve the recipient for this session: the number isn't on WhatsApp, or WhatsApp Web won't give its id to this session (it can happen with a number the session never had a chat with) | Not right away: it works once the recipient messages the session. The delivery methods hand it to `not_on_whatsapp` when given |
 | `RetryableError` | Nothing was sent: the session isn't started or ready, `IDEMPOTENCY_KEY_IN_PROGRESS`, a rate limit (`429`), a timeout, `5xx`, OpenWA unreachable | Yes, with the same key |
 | `UnknownOutcomeError` | `IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent | No: a new key may send it twice |
 | `RequestError` | OpenWA refused the request itself | No |

@@ -18,7 +18,9 @@ module Noticed
     # The API key is missing, unknown, revoked or expired, or its scope doesn't allow the call (401, 403).
     class AuthenticationError < Error; end
 
-    # WhatsApp has no account for the number.
+    # WhatsApp can't resolve the recipient for this session: the number has no WhatsApp account, or WhatsApp Web won't
+    # give its id (its LID) to this session, which can happen with a number the session never had a chat with. OpenWA
+    # can't tell the two apart. Nothing was sent; retrying right away gets the same answer.
     class NotOnWhatsappError < Error; end
 
     # Nothing was sent, and the same call can be made again: the session isn't ready, a rate limit, a timeout, OpenWA or
