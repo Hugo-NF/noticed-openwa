@@ -1,8 +1,3 @@
-> [!WARNING]
-> **In active development: the API isn't stable yet.** Options, method names and the shapes of what the gem returns can
-> change between versions, minor ones included, until it says otherwise here. Pin an exact version, and read the
-> release notes before upgrading.
-
 # noticed-openwa
 
 [![Gem](https://img.shields.io/gem/v/noticed-openwa)](https://rubygems.org/gems/noticed-openwa)

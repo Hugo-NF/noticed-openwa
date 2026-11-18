@@ -1,4 +1,6 @@
 # The repository's Sponsor button. custom takes up to 4 URLs, shown as they are (no label).
+# GitHub Sponsors: the maintainer's profile, paid out through Stripe.
+github: Hugo-NF
 custom:
   # BTG Pactual: Pix for donors in Brazil, or a credit card.
   - "https://links.btgpactual.com/iww9A3eZxFFiiTa"
