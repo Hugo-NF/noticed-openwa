@@ -2,8 +2,8 @@
 
 module Noticed
   module DeliveryMethods
-    # deliver_by :openwa, url:, api_key:, session_id:, to:, text:, and optionally files:, idempotency_key:, ca_file:,
-    # after_send:, not_on_whatsapp:
+    # deliver_by :openwa, url:, api_key:, session_id:, to:, text:, and optionally files:, location:, idempotency_key:,
+    # ca_file:, after_send:, not_on_whatsapp:
     #
     # Each option is a value, a lambda (evaluated on the notification) or the name of a notifier method. `to` is a phone
     # number or a chat id; `files` is [{ content:, mimetype:, filename: }] (content may be a lambda); the idempotency key

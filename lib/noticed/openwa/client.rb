@@ -97,6 +97,14 @@ module Noticed
         send_message_request("send-audio", body, idempotency_key)
       end
 
+      # A map pin: description is the place's name, shown on the pin, and address the line under it.
+      def send_location(chat_id, latitude:, longitude:, description: nil, address: nil, idempotency_key: nil)
+        raise ArgumentError, "latitude and longitude are required" if latitude.nil? || longitude.nil?
+
+        body = { chatId: chat_id, latitude: Float(latitude), longitude: Float(longitude), description:, address: }
+        send_message_request("send-location", body, idempotency_key)
+      end
+
       def send_document(chat_id, content:, mimetype:, filename:, caption: nil, idempotency_key: nil)
         body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, filename:, caption: }
         send_message_request("send-document", body, idempotency_key)

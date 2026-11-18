@@ -2,8 +2,8 @@
 
 module Noticed
   module BulkDeliveryMethods
-    # bulk_deliver_by :openwa, url:, api_key:, session_id:, to:, text:, and optionally files:, idempotency_key:, ca_file:,
-    # after_send:, not_on_whatsapp:
+    # bulk_deliver_by :openwa, url:, api_key:, session_id:, to:, text:, and optionally files:, location:,
+    # idempotency_key:, ca_file:, after_send:, not_on_whatsapp:
     #
     # Once per event, whatever its recipients: the message goes to `to`, a phone number or a chat id (a group's
     # included), or to each of a list of them. The options are those of `deliver_by :openwa`, evaluated on the event.
