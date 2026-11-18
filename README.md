@@ -65,8 +65,9 @@ end
 Each option is a value, a lambda evaluated on the notification, or the name of a notifier method, as in noticed's own
 delivery methods (`after_send` also gets the answers).
 
-Without files it sends the text. With files it sends one message per file, the text as the first one's caption: images
-(`image/*`) as images, the rest as documents. Files are sent as base64, never by URL.
+Without files it sends the text. With files it sends one message per file, the text as the last one's caption, so the
+chat shows it under the files without scrolling back: images (`image/*`) as images, the rest as documents. OpenWA
+has no album: several images arrive as separate messages. Files are sent as base64, never by URL.
 
 Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file): a retried job gets
 OpenWA's first answer replayed instead of sending again.
@@ -111,6 +112,41 @@ end
 
 Ephemeral notifiers (`Noticed::Ephemeral`) deliver the same way, without saving anything: see `idempotency_key`. Their
 notification isn't saved either, so `after_send` keeps the answers elsewhere (on the `record`, for example).
+
+## Bulk delivery method
+
+`deliver_by :openwa` sends a message to each recipient. `bulk_deliver_by :openwa` sends **once per event**, whatever
+its recipients, to chats of the app's choosing: a team's group, or a few numbers. It's noticed's bulk delivery, as its
+Slack or Discord ones post once to a channel:
+
+```ruby
+class BookingConfirmedNotifier < Noticed::Event
+  bulk_deliver_by :openwa,
+                  url: -> { ENV["OPENWA_URL"] },
+                  api_key: -> { ENV["OPENWA_API_KEY"] },
+                  session_id: -> { ENV["OPENWA_SESSION_ID"] },
+                  to: -> { ENV["OPERATIONS_WHATSAPP_GROUP"] }, # "120363012345678901@g.us"
+                  text: -> { "New booking: #{record.reference}" }
+end
+```
+
+Its options are `deliver_by :openwa`'s, evaluated on the event instead of a notification (there's none), and so are
+noticed's (`if`, `unless`, `wait`, `queue`, ...). The differences:
+
+| Option | |
+|---|---|
+| `to` | Required: a phone number or a chat id, a group's included (`<digits>@g.us`), or a list of them: one message each, in order, in the same job. An empty list sends nothing |
+| `idempotency_key` | Defaults to `noticed-event-<event id>` (apart from a notification's `noticed-<id>`, which can share the number); with a list, each chat's is suffixed `-chat1`, `-chat2`, ..., so a job retried after a failure halfway replays the chats already sent. An ephemeral notifier's event has none: pass one |
+| `after_send` | Called once every message was sent, with OpenWA's answers for every chat, in order: a lambda run on the event with the answers, or a notifier method's name, called with the event and the answers |
+
+A group's chat id is what WhatsApp holds for it: the session must be in the group, and the client sends to it as to any
+other chat. The delivery method's retries go on its own load hook:
+
+```ruby
+ActiveSupport.on_load(:noticed_bulk_delivery_methods_openwa) do
+  retry_on Noticed::Openwa::RetryableError, wait: :polynomially_longer, attempts: 5
+end
+```
 
 ## The client
 
@@ -235,7 +271,8 @@ Their messages name the call, the status and OpenWA's reason, with any phone num
 | `RequestError` | OpenWA refused the request itself | No |
 | `InvalidSignatureError` | A webhook delivery's `X-OpenWA-Signature` is missing, malformed or not the body's (`Webhook.verify!`) | No: refuse the delivery |
 
-Retrying is the app's choice, for example on the delivery method's load hook:
+Retrying is the app's choice, for example on the delivery method's load hook (the bulk one's is
+`:noticed_bulk_delivery_methods_openwa`):
 
 ```ruby
 ActiveSupport.on_load(:noticed_delivery_methods_openwa) do
@@ -291,16 +328,17 @@ OPENWA_RECORD=true VCR_RECORD_MODE=all bundle exec rspec spec/noticed/openwa/cli
 | `OPENWA_TEST_NUMBER_NOT_ON_WHATSAPP` | A number with no WhatsApp account |
 | `OPENWA_TEST_WEBHOOK_URL` | A public URL you control: the webhook specs register it |
 | `OPENWA_SESSION_PHONE`, `OPENWA_SESSION_PUSH_NAME` | The session account's own number and WhatsApp name, kept out of the cassettes |
+| `OPENWA_TEST_GROUP` | A WhatsApp group of yours, with your number and the session in it, as its chat id (`<digits>@g.us`): it receives the bulk delivery method's test messages |
 | `OPENWA_WEBHOOK_SECRET` | Optional: the webhook specs' secret (16 characters or more) |
 
 A value is the rest of its line (no inline comments; quotes around it are dropped), and an empty one is the same
 as leaving it out.
 
-The URL (scheme, host and port), the key, the session, the webhook's URL and secret, the session account's number
-and name, and both numbers (with and without the ninth digit) are replaced by placeholders in the cassettes, the
-`Host` header isn't kept, and replayed with the placeholders of `spec/spec_helper.rb`. The "not on WhatsApp" spec
-checks the number first and stops before sending if it is on WhatsApp: a real account would receive the message.
-Check a new cassette for those values before committing it.
+The URL (scheme, host and port), the key, the session, the webhook's URL and secret, the session account's number and
+name, the test group's id, and both numbers (with and without the ninth digit) are replaced by placeholders in the
+cassettes, the `Host` header isn't kept, and replayed with the placeholders of `spec/spec_helper.rb`. The "not on
+WhatsApp" spec checks the number first and stops before sending if it is on WhatsApp: a real account would receive the
+message. Check a new cassette for those values before committing it.
 
 The webhook specs register `OPENWA_TEST_WEBHOOK_URL` on the session (OpenWA refuses a URL that doesn't resolve to a
 public address): the session's events are delivered there while it exists. Each spec unregisters it before it ends,
