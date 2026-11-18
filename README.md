@@ -72,8 +72,10 @@ Each option is a value, a lambda evaluated on the notification, or the name of a
 delivery methods (`after_send` also gets the answers).
 
 Without files it sends the text. With files it sends one message per file, the text as the last one's caption, so the
-chat shows it under the files without scrolling back: images (`image/*`) as images, the rest as documents. OpenWA
-has no album: several images arrive as separate messages. Files are sent as base64, never by URL.
+chat shows it under the files without scrolling back: images (`image/*`) as images, MP4s (`video/mp4`) as videos that
+play in the chat, the rest as documents (other video formats included: WhatsApp can't be counted on to play them, and
+the gem converts nothing). OpenWA has no album: several images arrive as separate messages. Files are sent as base64,
+never by URL.
 
 Every message carries an `Idempotency-Key` (the option's key, suffixed `-1`, `-2`, ... per file): a retried job gets
 OpenWA's first answer replayed instead of sending again.
@@ -176,6 +178,7 @@ client.check_number("+55 61 90000-0001")   # => { exists: true, whatsapp_id: "55
 client.send_text(chat_id, "Hello", idempotency_key: "welcome-42")
 # => { message_id: "...", timestamp: 1795021278, chat_id: "5561900000001@c.us" }
 client.send_image(chat_id, content: png_bytes, mimetype: "image/png", caption: "...")
+client.send_video(chat_id, content: mp4_bytes, caption: "...")            # an MP4 (H.264 and AAC)
 client.send_document(chat_id, content: pdf_bytes, mimetype: "application/pdf", filename: "ticket.pdf", caption: "...")
 client.send_message(chat_id, text: "...", files: [...], idempotency_key: "...")
 Noticed::Openwa::Client.chat_id("+55 61 90000-0001") # => "5561900000001@c.us"

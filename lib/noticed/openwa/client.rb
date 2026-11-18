@@ -79,16 +79,22 @@ module Noticed
         send_message_request("send-image", body, idempotency_key)
       end
 
+      # An MP4 (H.264 and AAC), which plays in the chat; other formats can't be counted on to, so send them as documents.
+      def send_video(chat_id, content:, mimetype: "video/mp4", caption: nil, idempotency_key: nil)
+        body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, caption: }
+        send_message_request("send-video", body, idempotency_key)
+      end
+
       def send_document(chat_id, content:, mimetype:, filename:, caption: nil, idempotency_key: nil)
         body = { chatId: chat_id, base64: Base64.strict_encode64(content), mimetype:, filename:, caption: }
         send_message_request("send-document", body, idempotency_key)
       end
 
       # A text with its files: one message per file, the text as the last one's caption, where the chat shows it
-      # without scrolling back over the others (images as images, the rest as documents), or the text alone without
-      # files. files: [{ content:, mimetype:, filename: }]; content may be a
-      # lambda, called only when that file is sent. Each message's idempotency key is the given one, suffixed with its
-      # position when there are files. Returns OpenWA's answers.
+      # without scrolling back over the others (images as images, MP4s as videos, the rest as documents), or the text
+      # alone without files. files: [{ content:, mimetype:, filename: }]; content may be a lambda, called only when that
+      # file is sent. Each message's idempotency key is the given one, suffixed with its position when there are files.
+      # Returns OpenWA's answers.
       def send_message(chat_id, text:, files: [], idempotency_key: nil, link_preview: nil)
         return [ send_text(chat_id, text, link_preview:, idempotency_key:) ] if files.empty?
 
@@ -141,10 +147,10 @@ module Noticed
         content = content.call if content.respond_to?(:call)
         mimetype = file.fetch(:mimetype)
 
-        if mimetype.start_with?("image/")
-          send_image(chat_id, content:, mimetype:, caption:, idempotency_key:)
-        else
-          send_document(chat_id, content:, mimetype:, filename: file.fetch(:filename), caption:, idempotency_key:)
+        case mimetype.split(";").first.strip.downcase
+        when %r{\Aimage/} then send_image(chat_id, content:, mimetype:, caption:, idempotency_key:)
+        when "video/mp4" then send_video(chat_id, content:, mimetype:, caption:, idempotency_key:)
+        else send_document(chat_id, content:, mimetype:, filename: file.fetch(:filename), caption:, idempotency_key:)
         end
       end
 
