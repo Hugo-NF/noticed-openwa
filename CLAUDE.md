@@ -54,7 +54,8 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 | `NotOnWhatsappError` | A `400` whose message says WhatsApp can't resolve the recipient |
 | `RetryableError` | Nothing was sent: a session not started (`400`) or not ready (`409`), `IDEMPOTENCY_KEY_IN_PROGRESS`, `408`, `429`, `5xx`, a network error |
 | `UnknownOutcomeError` | `409 IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent |
-| `QuotedMessageNotFoundError` | A `404` whose message says a quoted message isn't found: the sends retry once without the quote |
+| `MessageNotFoundError` | A `404` whose message says a message isn't found, outside a send |
+| `QuotedMessageNotFoundError` | The same `404` from a send (a `MessageNotFoundError`): the sends retry once without the quote |
 | `RequestError` | Any other refusal |
 | `InvalidSignatureError` | A webhook delivery whose `X-OpenWA-Signature` is missing, malformed or not the body's |
 

@@ -395,6 +395,45 @@ RSpec.describe Noticed::Openwa::Client do
     end
   end
 
+  describe "#delete_message" do
+    context "with a message the session sent", vcr: { cassette_name: "delete_message/deleted" } do
+      it "deletes it for everyone, in the chat its id carries (WhatsApp's, often an @lid)", :aggregate_failures do
+        sent = client.send_text(chat_id, "noticed-openwa: deleted for everyone", idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+        expect(client.delete_message(sent[:message_id])).to be(true)
+        expect(a_request(:post, %r{/messages/delete\z}).with { |request|
+          JSON.parse(request.body) == { "chatId" => sent[:message_id][/\Atrue_([^_]+)_/, 1], "messageId" => sent[:message_id],
+                                        "forEveryone" => true }
+        }).to have_been_made
+      end
+    end
+
+    context "with a message OpenWA can't find", vcr: { cassette_name: "delete_message/not_found" } do
+      it "raises a message not found error", :aggregate_failures do
+        expect { client.delete_message("true_100000000000001@lid_3EB0000000000000000000_out") }
+          .to raise_error(Noticed::Openwa::MessageNotFoundError) { |error| expect(error).not_to be_a(Noticed::Openwa::QuotedMessageNotFoundError) }
+      end
+    end
+
+    it "requires a chat when the id doesn't carry one" do
+      expect { client.delete_message("3EB0000000000000000000") }.to raise_error(ArgumentError, /its chat/)
+    end
+  end
+
+  describe "#delete_messages", vcr: { cassette_name: "delete_message/delivery" } do
+    let(:files) do
+      [ { content: OpenwaSpecSupport::PDF, mimetype: "application/pdf", filename: "noticed-openwa.pdf" },
+        { content: OpenwaSpecSupport::PNG, mimetype: "image/png", filename: "noticed-openwa.png" } ]
+    end
+
+    it "deletes every message of a delivery, from its answers" do
+      answers = client.send_message(chat_id, text: "noticed-openwa: a delivery deleted", files:,
+                                             idempotency_key: OpenwaSpecSupport.idempotency_key)
+
+      expect(client.delete_messages(answers)).to eq(2)
+    end
+  end
+
   describe "#webhooks", vcr: { cassette_name: "webhooks/listed" } do
     before do
       client.register_webhook(url: OpenwaSpecSupport.webhook_url, secret: OpenwaSpecSupport.webhook_secret,
