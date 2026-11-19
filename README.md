@@ -204,6 +204,22 @@ when WhatsApp Web won't resolve it for the session ("Errors").
 sent, and the session's own `linkPreview` config decides (OpenWA's default otherwise: a preview on whatsapp-web.js,
 none on Baileys). The delivery method leaves it out.
 
+### A message's receipts
+
+```ruby
+client.receipts(answer[:message_id])
+# => { status: "read", delivered: [], read: [{ participant: "5561...@c.us", at: <Time> }], played: [], raw: {...} }
+```
+
+`status` is the furthest step every participant reached: `"sent"`, `"delivered"`, `"read"`, or `"played"` for an
+audio or voice note listened to. In a group, `"read"` means everyone read it; the lists say who did what, and when.
+They're the webhook's statuses (`Webhook::Event#status`), plus `"played"`, which the webhook doesn't report.
+
+A webhook delivery can be lost, so an app that keeps its `message_id`s (`after_send`) can poll the ones it never heard
+a `read` for, from a job of its own. Mind OpenWA's rate limit, 10 requests a second: space the calls out. As for
+deleting, the chat is read from the message id. Only the session's own messages carry receipts: any other raises
+`RequestError`, and an unknown one `MessageNotFoundError`.
+
 ### Deleting a sent message
 
 ```ruby
@@ -316,7 +332,7 @@ Their messages name the call, the status and OpenWA's reason, with any phone num
 
 | Error | When | Retry? |
 |---|---|---|
-| `AuthenticationError` | `401`, `403`: the key is missing, unknown, revoked or out of its scope | No |
+| `AuthenticationError` | `401`, `403`: the key is missing, unknown, revoked or out of its scope (not a `403` for receipts of a message the session didn't send: a `RequestError`) | No |
 | `NotOnWhatsappError` | WhatsApp can't resolve the recipient for this session: the number isn't on WhatsApp, or WhatsApp Web won't give its id to this session (it can happen with a number the session never had a chat with) | Not right away: it works once the recipient messages the session. The delivery methods hand it to `not_on_whatsapp` when given |
 | `RetryableError` | Nothing was sent: the session isn't started or ready, `IDEMPOTENCY_KEY_IN_PROGRESS`, a rate limit (`429`), a timeout, `5xx`, OpenWA unreachable | Yes, with the same key |
 | `UnknownOutcomeError` | `IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent | No: a new key may send it twice |
