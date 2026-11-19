@@ -21,6 +21,8 @@ module Noticed
       NOT_ON_WHATSAPP = /not (?:a )?registered|not on whatsapp/i
       # A 404 for a quoted message OpenWA can't find (a send's quotedMessageId), not for the session.
       MESSAGE_NOT_FOUND = /\AMessage .+ not found/
+      # The chat a whatsapp-web.js message id names: true_<chat>_<id>_out, or <chat>_<id>_<participant> in a group.
+      MESSAGE_CHAT = /\A(?:true|false)_([^_]+@(?:c\.us|g\.us|lid|s\.whatsapp\.net|newsletter))_/
       # A 400 for a session that isn't started: nothing was sent, and it can be started again.
       SESSION_NOT_STARTED = /session is not (?:started|active)/i
       # Digits long enough to be a number, kept out of error messages.
@@ -180,6 +182,28 @@ module Noticed
         matching.size
       end
 
+      # Deletes a message the session sent, for everyone: WhatsApp shows "This message was deleted" in its place. Past
+      # WhatsApp's window for that (about 2 days), WhatsApp Web deletes it for the session's account only and OpenWA
+      # still answers success: the recipient keeps it. OpenWA looks for it among the chat's last 100 messages; an older
+      # one raises MessageNotFoundError. The chat is the one WhatsApp holds, which the message id carries
+      # (true_<chat>_<id>_out), often the recipient's @lid: OpenWA can't find a LID-migrated recipient's chat from their
+      # number. chat_id is for an id that doesn't carry one. Returns true.
+      def delete_message(message_id, chat_id: nil)
+        chat_id ||= message_id.to_s[MESSAGE_CHAT, 1]
+        if blank?(message_id) || blank?(chat_id)
+          raise ArgumentError, "a message id, and its chat when the id doesn't carry one"
+        end
+
+        body = { chatId: chat_id, messageId: message_id, forEveryone: true }
+        request(Net::HTTP::Post, "messages/delete", body:, operation: "delete_message")[:success] == true
+      end
+
+      # Deletes, for everyone, every message of a delivery: the answers after_send gave ({ message_id:, ... }), in
+      # order. Returns how many were deleted.
+      def delete_messages(answers)
+        Array(answers).count { |answer| delete_message(answer.fetch(:message_id)) }
+      end
+
       private
 
       def send_file(chat_id, file, caption:, quoted_message_id:, idempotency_key:)
@@ -259,19 +283,26 @@ module Noticed
         return Keys.symbolize(body) if status.between?(200, 299)
 
         body = {} unless body.is_a?(Hash)
-        raise error_class(status, body).new(error_message(operation, status, body, secrets),
+        raise error_class(status, body, operation).new(error_message(operation, status, body, secrets),
                                             status:, code: body["code"], retry_after: retry_after(response, body))
       end
 
-      def error_class(status, body)
+      def error_class(status, body, operation)
         case status
         when 401, 403 then AuthenticationError
         when 409 then body["code"] == "IDEMPOTENCY_OUTCOME_UNKNOWN" ? UnknownOutcomeError : RetryableError
         when 408, 429, 500.. then RetryableError
         when 400 then client_error_class(body)
-        when 404 then MESSAGE_NOT_FOUND.match?(messages(body)) ? QuotedMessageNotFoundError : RequestError
+        when 404 then message_not_found_class(body, operation)
         else RequestError
         end
+      end
+
+      # A send's 404 for a message is its quoted one's; any other call's, the message it names.
+      def message_not_found_class(body, operation)
+        return RequestError unless MESSAGE_NOT_FOUND.match?(messages(body))
+
+        operation.start_with?("send_") ? QuotedMessageNotFoundError : MessageNotFoundError
       end
 
       def client_error_class(body)

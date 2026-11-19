@@ -204,6 +204,22 @@ when WhatsApp Web won't resolve it for the session ("Errors").
 sent, and the session's own `linkPreview` config decides (OpenWA's default otherwise: a preview on whatsapp-web.js,
 none on Baileys). The delivery method leaves it out.
 
+### Deleting a sent message
+
+```ruby
+client.delete_message(answer[:message_id]) # => true, for everyone
+client.delete_messages(answers)            # every message of a delivery (after_send's answers) => 2
+```
+
+It withdraws a notification sent by mistake: WhatsApp shows "This message was deleted" in its place. Past WhatsApp's
+window for deleting for everyone (about 2 days), WhatsApp Web deletes the message only from the session's account and
+OpenWA still answers success: **the recipient keeps it**, and the gem can't tell. OpenWA looks for the message among the
+chat's last 100 messages; an older one raises `MessageNotFoundError`.
+
+The chat is read from the message id (`true_<chat>_<id>_out`): it's the one WhatsApp holds, often the recipient's
+`@lid`, which can differ from the `chat_id` the message was sent to. OpenWA can't find a LID-migrated recipient's chat
+from their number, so the answer's `chat_id` wouldn't do. `chat_id:` is for an id that doesn't carry its chat.
+
 ### The session's status
 
 ```ruby
@@ -305,7 +321,8 @@ Their messages name the call, the status and OpenWA's reason, with any phone num
 | `RetryableError` | Nothing was sent: the session isn't started or ready, `IDEMPOTENCY_KEY_IN_PROGRESS`, a rate limit (`429`), a timeout, `5xx`, OpenWA unreachable | Yes, with the same key |
 | `UnknownOutcomeError` | `IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent | No: a new key may send it twice |
 | `RequestError` | OpenWA refused the request itself | No |
-| `QuotedMessageNotFoundError` | A `RequestError`: the message a send quotes (`quoted_message_id`) isn't one OpenWA can find (`404`). The client's sends handle it themselves, sending again without the quote | No |
+| `MessageNotFoundError` | A `RequestError`: the message to delete isn't one OpenWA can find (`404`), or is older than the chat's last 100 | No |
+| `QuotedMessageNotFoundError` | A `MessageNotFoundError`: the message a send quotes (`quoted_message_id`) isn't one OpenWA can find (`404`). The client's sends handle it themselves, sending again without the quote | No |
 | `InvalidSignatureError` | A webhook delivery's `X-OpenWA-Signature` is missing, malformed or not the body's (`Webhook.verify!`) | No: refuse the delivery |
 
 Retrying is the app's choice, for example on the delivery method's load hook (the bulk one's is
