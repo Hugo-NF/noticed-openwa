@@ -50,7 +50,7 @@ git tag --list 'v*' | ruby script/release_version.rb next_rc   # the version the
 
 | Error | When |
 |---|---|
-| `AuthenticationError` | `401`, `403` |
+| `AuthenticationError` | `401`, `403` (but a `403` refusing receipts of a message the session didn't send: `RequestError`) |
 | `NotOnWhatsappError` | A `400` whose message says WhatsApp can't resolve the recipient |
 | `RetryableError` | Nothing was sent: a session not started (`400`) or not ready (`409`), `IDEMPOTENCY_KEY_IN_PROGRESS`, `408`, `429`, `5xx`, a network error |
 | `UnknownOutcomeError` | `409 IDEMPOTENCY_OUTCOME_UNKNOWN`: the message may have been sent |

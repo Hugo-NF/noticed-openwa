@@ -420,6 +420,79 @@ RSpec.describe Noticed::Openwa::Client do
     end
   end
 
+  describe "#receipts" do
+    context "with a message the session sent", vcr: { cassette_name: "receipts/sent" } do
+      it "returns how far it got, in the chat its id carries", :aggregate_failures do
+        sent = client.send_text(chat_id, "noticed-openwa: receipts", idempotency_key: OpenwaSpecSupport.idempotency_key)
+        receipts = client.receipts(sent[:message_id])
+
+        expect(receipts).to include(status: be_in(%w[sent delivered read played]), delivered: an_instance_of(Array),
+                                    read: an_instance_of(Array), played: an_instance_of(Array), raw: an_instance_of(Hash))
+        expect(a_request(:get, %r{/messages/#{Regexp.escape(sent[:message_id][/\Atrue_([^_]+)_/, 1])}/})).to have_been_made
+      end
+    end
+
+    context "with a message OpenWA can't find", vcr: { cassette_name: "receipts/not_found" } do
+      it "raises a message not found error" do
+        expect { client.receipts("true_100000000000001@lid_3EB0000000000000000000_out") }
+          .to raise_error(Noticed::Openwa::MessageNotFoundError)
+      end
+    end
+
+    it "requires a chat when the id doesn't carry one" do
+      expect { client.receipts("3EB0000000000000000000") }.to raise_error(ArgumentError, /its chat/)
+    end
+
+    # Receipts a session can't be made to give on demand (the test number is the session's own account, so its receipts
+    # stay empty), from the template of receipts/sent.yml: the recorded message, with another answer.
+    describe "templated answers" do
+      subject(:receipts) { client.receipts("true_100000000000001@lid_3EB02ECF87D0832AEF5515_out") }
+
+      def self.answer(body, code: 200, message: "OK")
+        { vcr: { cassette_name: "templates/receipts", record: :none, erb: { code:, message:, body: JSON.generate(body) } } }
+      end
+
+      def self.receipts(delivery: [], read: [], read_remaining: 0, played: [])
+        { delivery:, deliveryRemaining: 0, read:, readRemaining: read_remaining, played:, playedRemaining: 0 }
+      end
+
+      def self.participant(name) = { participant: "#{name}@c.us", timestamp: 1_795_058_300 }
+
+      context "when the recipient has it", **answer(receipts(delivery: [ participant("openwa-number-a") ])) do
+        it { expect(receipts[:status]).to eq("delivered") }
+      end
+
+      context "when the recipient read it", **answer(receipts(read: [ participant("openwa-number-a") ])) do
+        it "is read, with who read it and when", :aggregate_failures do
+          expect(receipts[:status]).to eq("read")
+          expect(receipts[:read]).to eq([ { participant: chat_id, at: Time.at(1_795_058_300) } ])
+        end
+      end
+
+      context "when the recipient played it",
+              **answer(receipts(read: [ participant("openwa-number-a") ], played: [ participant("openwa-number-a") ])) do
+        it { expect(receipts[:status]).to eq("played") }
+      end
+
+      context "when only some of a group read it",
+              **answer(receipts(delivery: [ participant("openwa-number-b") ], read: [ participant("openwa-number-a") ],
+                                read_remaining: 1)) do
+        it { expect(receipts[:status]).to eq("delivered") }
+      end
+
+      context "when the message isn't the session's",
+              **answer({ statusCode: 403, error: "Forbidden",
+                         message: "message true_100000000000001@lid_3EB0 was not sent by this account; only its own " \
+                                  "messages carry receipts" }, code: 403, message: "Forbidden") do
+        it "raises a request error, not an authentication one", :aggregate_failures do
+          expect { receipts }.to raise_error(Noticed::Openwa::RequestError) do |error|
+            expect(error).not_to be_a(Noticed::Openwa::AuthenticationError)
+          end
+        end
+      end
+    end
+  end
+
   describe "#delete_messages", vcr: { cassette_name: "delete_message/delivery" } do
     let(:files) do
       [ { content: OpenwaSpecSupport::PDF, mimetype: "application/pdf", filename: "noticed-openwa.pdf" },

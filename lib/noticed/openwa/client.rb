@@ -21,6 +21,7 @@ module Noticed
       NOT_ON_WHATSAPP = /not (?:a )?registered|not on whatsapp/i
       # A 404 for a quoted message OpenWA can't find (a send's quotedMessageId), not for the session.
       MESSAGE_NOT_FOUND = /\AMessage .+ not found/
+      NOT_OWN_MESSAGE = /not sent by this account/
       # The chat a whatsapp-web.js message id names: true_<chat>_<id>_out, or <chat>_<id>_<participant> in a group.
       MESSAGE_CHAT = /\A(?:true|false)_([^_]+@(?:c\.us|g\.us|lid|s\.whatsapp\.net|newsletter))_/
       # A 400 for a session that isn't started: nothing was sent, and it can be started again.
@@ -198,6 +199,23 @@ module Noticed
         request(Net::HTTP::Post, "messages/delete", body:, operation: "delete_message")[:success] == true
       end
 
+      # { status:, delivered:, read:, played:, raw: }: how far a message the session sent got. status is the furthest
+      # step every participant reached ("sent", "delivered", "read", or "played" for an audio listened to; in a group,
+      # "read" once everyone read it), in the webhook's terms (Webhook::Event#status) but "played"; the lists are
+      # [{ participant:, at: }]. The chat is read from the message id, as for delete_message. Only the session's own
+      # messages carry receipts: any other raises RequestError, an unknown one MessageNotFoundError.
+      def receipts(message_id, chat_id: nil)
+        chat_id ||= message_id.to_s[MESSAGE_CHAT, 1]
+        if blank?(message_id) || blank?(chat_id)
+          raise ArgumentError, "a message id, and its chat when the id doesn't carry one"
+        end
+
+        ids = [ chat_id, message_id ].map { URI.encode_www_form_component(_1) }
+        body = request(Net::HTTP::Get, "messages/#{ids.join('/')}/receipts", operation: "receipts")
+        { status: receipt_status(body), delivered: receipt_list(body[:delivery]), read: receipt_list(body[:read]),
+          played: receipt_list(body[:played]), raw: body }
+      end
+
       # Deletes, for everyone, every message of a delivery: the answers after_send gave ({ message_id:, ... }), in
       # order. Returns how many were deleted.
       def delete_messages(answers)
@@ -205,6 +223,22 @@ module Noticed
       end
 
       private
+
+      # A step counts once every participant reached it: its list isn't empty and nobody remains.
+      def receipt_status(body)
+        reached = ->(step) { Array(body[step]).any? && body[:"#{step}_remaining"].to_i.zero? }
+        if reached.call(:played) then "played"
+        elsif reached.call(:read) then "read"
+        elsif reached.call(:delivery) then "delivered"
+        else "sent"
+        end
+      end
+
+      def receipt_list(list)
+        Array(list).map do |each|
+          { participant: each[:participant], at: (Time.at(each[:timestamp]) if each[:timestamp].to_i.positive?) }
+        end
+      end
 
       def send_file(chat_id, file, caption:, quoted_message_id:, idempotency_key:)
         content = file.fetch(:content)
@@ -289,7 +323,9 @@ module Noticed
 
       def error_class(status, body, operation)
         case status
-        when 401, 403 then AuthenticationError
+        when 401 then AuthenticationError
+        # A refusal of the call itself (a message the session didn't send has no receipts), not of the key.
+        when 403 then NOT_OWN_MESSAGE.match?(messages(body)) ? RequestError : AuthenticationError
         when 409 then body["code"] == "IDEMPOTENCY_OUTCOME_UNKNOWN" ? UnknownOutcomeError : RetryableError
         when 408, 429, 500.. then RetryableError
         when 400 then client_error_class(body)
