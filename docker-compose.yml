@@ -21,7 +21,7 @@ services:
   # The latest version the gem supports (README, "OpenWA versions"). Its API key is generated on the first start:
   #   docker compose exec openwa cat /app/data/.api-key
   openwa:
-    image: ghcr.io/rmyndharis/openwa:0.30.3
+    image: ghcr.io/rmyndharis/openwa:0.31.0
     depends_on:
       postgres:
         condition: service_healthy
