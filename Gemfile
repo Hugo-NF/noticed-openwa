@@ -13,4 +13,4 @@ gem "rubocop-rspec", require: false
 gem "simplecov", require: false
 gem "simplecov-json", require: false
 gem "vcr", "~> 6.3"
-gem "webmock", "~> 3.25"
+gem "webmock", "~> 3.36"
